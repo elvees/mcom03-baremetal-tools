@@ -54,6 +54,20 @@
 #define LSP1_UCG_CTRL4 (LSP1_UCG + 0x10)  // GPIO_DBCLK
 #define LSP1_UCG_CTRL6 (LSP1_UCG + 0x18)  // UART_CLK
 
+#define LSP1_UCG_PAD_CTR(port, num) (LSP1_UCG + 0x20 + ((port) * 0x20) + ((num) * 0x4))
+#define PORTA 0
+#define PORTB 1
+#define PORTC 2
+#define PORTD 3
+#define PAD_CTL_SUS BIT(0)
+#define PAD_CTL_PU BIT(1)
+#define PAD_CTL_PD BIT(2)
+#define PAD_CTL_SL(x) (((x) & 0x3) << 3)
+#define PAD_CTL_CTL(x) (((x) & 0x3f) << 5)
+#define PAD_CTL_E BIT(12)
+#define PAD_CTL_CLE BIT(13)
+#define PAD_CTL_OD BIT(14)
+
 #define HSP_URB 0x10400000
 #define HSP_URB_RST (HSP_URB + 0x8)
 #define HSP_URB_XIP_EN_REQ (HSP_URB + 0x10)
