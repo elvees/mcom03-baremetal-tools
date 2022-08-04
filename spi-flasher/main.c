@@ -77,10 +77,10 @@ const struct {
 	{
 		.cmd_id = CMD_QSPI,
 		.cmd = "qspi",
-		.help = "select active QSPI controller: qspi <id>",
+		.help = "select active QSPI controller and pad configuration: qspi <id> [v18]",
 		.arg_min = 1,
-		.arg_max = 1,
-		.arg_types = { ARG_UINT },
+		.arg_max = 2,
+		.arg_types = { ARG_UINT, ARG_UINT },
 	},
 	{
 		.cmd_id = CMD_ERASE,
@@ -125,13 +125,17 @@ const struct {
 };
 
 
-int qspi_init(int id)
+int qspi_init(int id, int v18)
 {
 	if (id == 0)
 		qspi = (struct qspi *)(TO_VIRT(QSPI0_BASE));
-	else if (id == 1)
+	else if (id == 1) {
 		qspi = (struct qspi *)(TO_VIRT(QSPI1_BASE));
-	else
+		if (v18)
+			REG(HSP_URB_QSPI1_PADCFG) |= BIT(1);
+		else
+			REG(HSP_URB_QSPI1_PADCFG) &= ~BIT(1);
+	} else
 		return -1;
 
 	qspi->CTRL = 0x25;
@@ -496,10 +500,11 @@ void iface_execute(char *cmd, char *args[], int argc)
 			uart_printf("%s    - %s\n", commands[i].cmd, commands[i].help);
 		break;
 	case CMD_QSPI:
-		if (qspi_init(arguments[0].uint))
+		if (qspi_init(arguments[0].uint, arguments[1].uint))
 			uart_puts("Error: Init error\n");
 		else
-			uart_printf("Selected QSPI%u\n", arguments[0].uint);
+			uart_printf("Selected QSPI%u, padcfg v18 = %u\n", arguments[0].uint,
+				    !!arguments[1].uint);
 		break;
 	case CMD_ERASE:
 		qspi_flash_write_enable();
@@ -639,7 +644,7 @@ int main(void)
 	REG(GPIO1_SWPORTB_CTL) |= 0xc0;  // UART0 in hardware mode
 
 	uart_init(XTI_FREQUENCY, 115200);
-	qspi_init(0);
+	qspi_init(0, 1);
 	uart_printf("%s\n#", APP_NAME);
 	while (1) {
 		iface_process();
