@@ -33,3 +33,4 @@ repos:
     rev: master
     hooks:
       - id: cppcheck
+        args: [--suppress=objectIndex]
