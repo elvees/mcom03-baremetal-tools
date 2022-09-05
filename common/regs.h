@@ -45,6 +45,7 @@
 #define UART0_BASE (LSP1_BASE + 0x50000)
 #define GPIO1_BASE (LSP1_BASE + 0x80000)
 #define LSP1_UCG (LSP1_BASE + 0xc0000)
+#define LSP1_URB (LSP1_BASE + 0xe0000)
 
 #define GPIO1_SWPORTB_CTL (GPIO1_BASE + 0x14)
 #define GPIO1_SWPORTD_DR (GPIO1_BASE + 0x24)
@@ -54,7 +55,7 @@
 #define LSP1_UCG_CTRL4 (LSP1_UCG + 0x10)  // GPIO_DBCLK
 #define LSP1_UCG_CTRL6 (LSP1_UCG + 0x18)  // UART_CLK
 
-#define LSP1_UCG_PAD_CTR(port, num) (LSP1_UCG + 0x20 + ((port) * 0x20) + ((num) * 0x4))
+#define LSP1_URB_PAD_CTR(port, num) (LSP1_URB + 0x20 + ((port) * 0x20) + ((num) * 0x4))
 #define PORTA 0
 #define PORTB 1
 #define PORTC 2
