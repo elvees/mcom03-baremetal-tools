@@ -13,3 +13,6 @@
               cmake_extra_configure_options: >-
                 -DCMAKE_C_FLAGS="-Wall -Werror"
                 -DCMAKE_CXX_FLAGS="-Wall -Werror"
+    experimental:
+      jobs:
+        - mcom03-linux510-buildroot-build

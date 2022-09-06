@@ -8,6 +8,15 @@
 #include <regs.h>
 #include <uart.h>
 
+/*
+ * Turn A into a string literal without expanding macro definitions
+ * (however, if invoked from a macro, macro arguments are expanded).
+ */
+#define STRINGIZE_NX(A) #A
+
+/* Turn A into a string literal after macro-expanding it. */
+#define STRINGIZE(A) STRINGIZE_NX(A)
+
 #define SR1_BUSY 0x1
 
 #define FLASH_READ 0x3
@@ -17,7 +26,7 @@
 #define FLASH_ERASE 0xd8
 #define FLASH_ERASE4 0xdc
 
-#define APP_NAME "QSPI Flasher"
+#define APP_NAME "QSPI Flasher (commit: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "')"
 
 struct qspi {
 	volatile uint32_t TX_DATA;
