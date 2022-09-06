@@ -16,6 +16,7 @@ int main(void)
 	while ((REG(LSPERIPH1_SUBS_PSTATUS) & 0x1f) != PP_ON) {
 	}
 
+	REG(LSP1_URB_PLL) = 0;  // Turn PLL to bypass mode
 	REG(LSP1_UCG_CTRL4) = 0x2;  // GPIO_DBCLK CLK_EN
 	REG(LSP1_UCG_CTRL6) = 0x2;  // UART_CLK CLK_EN
 

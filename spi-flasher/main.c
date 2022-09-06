@@ -143,6 +143,10 @@ int qspi_init(int id, int v18)
 	qspi->SS = 0x1;
 	qspi->ENABLE = 0x1;
 
+	// Set high level to HOLD and WP pads
+	qspi->GPO_SET = 0xc0c;
+	qspi->GPO_CLR = 0x10c0;
+
 	return 0;
 }
 
@@ -601,6 +605,12 @@ void iface_process(void)
 	cmd_line.line[cmd_line.pos] = '\0';
 }
 
+static void delay_loop(void)
+{
+	for (volatile int i = 0; i < 10000; i++) {
+	}
+}
+
 int main(void)
 {
 	ucg_regs_t *ucg;
@@ -614,6 +624,25 @@ int main(void)
 	REG(HSPERIPH_SUBS_PPOLICY) = PP_ON;  // Enable HSPERIPH
 	while ((REG(HSPERIPH_SUBS_PSTATUS) & 0x1f) != PP_ON) {
 	}
+
+	if ((REG(SERVICE_URB_PLL) & 0xff) != 7) {
+		// Setup SERVICE clocks as in UART boot mode
+		ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
+		ucg->BP_CTR_REG = 0xffff;
+		delay_loop();
+		REG(SERVICE_URB_PLL) = 7;  // SERVICE PLL to 216 MHz
+		delay_loop();
+		ucg->CTR_REG[0] = 0x2302;   // CLK_APB div=8 (27 MHz)
+		ucg->CTR_REG[1] = 0x702;    // CLK_CORE div=1 (216 MHz)
+		ucg->CTR_REG[2] = 0x702;    // CLK_QSPI0 div=1 (216 MHz)
+		ucg->CTR_REG[13] = 0x4302;  // CLK_QSPI0_EXT div=16 (13.5 MHz)
+		delay_loop();
+		ucg->BP_CTR_REG = 0;
+	}
+
+	// Turn PLLs to bypass mode
+	REG(HSP_URB_PLL) = 0;
+	REG(LSP1_URB_PLL) = 0;
 
 	REG(HSP_URB_RST) = BIT(2) | BIT(18);  // Assert reset for QSPI1
 
@@ -643,6 +672,7 @@ int main(void)
 					  PAD_CTL_SL(0x3) | PAD_CTL_SUS;
 	REG(GPIO1_SWPORTB_CTL) |= 0xc0;  // UART0 in hardware mode
 
+	uart_flush();
 	uart_init(XTI_FREQUENCY, 115200);
 	qspi_init(0, 1);
 	uart_printf("%s\n#", APP_NAME);

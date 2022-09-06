@@ -30,6 +30,12 @@
 #define PP_WARM_RST 0x8
 #define PP_OFF 0x1
 
+#define SERVICE_BASE 0x1f000000
+#define SERVICE_URB SERVICE_BASE
+#define SERVICE_UCG (SERVICE_BASE + 0x20000)
+
+#define SERVICE_URB_PLL (SERVICE_URB + 0x1000)
+
 #define LSP0_BASE 0x01600000
 #define PDMA0_BASE LSP0_BASE
 #define GPIO0_BASE (LSP0_BASE + 10000)
@@ -55,6 +61,7 @@
 #define LSP1_UCG_CTRL4 (LSP1_UCG + 0x10)  // GPIO_DBCLK
 #define LSP1_UCG_CTRL6 (LSP1_UCG + 0x18)  // UART_CLK
 
+#define LSP1_URB_PLL LSP1_URB
 #define LSP1_URB_PAD_CTR(port, num) (LSP1_URB + 0x20 + ((port) * 0x20) + ((num) * 0x4))
 #define PORTA 0
 #define PORTB 1
@@ -70,6 +77,7 @@
 #define PAD_CTL_OD BIT(14)
 
 #define HSP_URB 0x10400000
+#define HSP_URB_PLL HSP_URB
 #define HSP_URB_RST (HSP_URB + 0x8)
 #define HSP_URB_XIP_EN_REQ (HSP_URB + 0x10)
 #define HSP_URB_XIP_EN_OUT (HSP_URB + 0x14)
