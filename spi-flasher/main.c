@@ -11,6 +11,13 @@
 
 #define SR1_BUSY 0x1
 
+#define FLASH_READ 0x3
+#define FLASH_READ4 0x13
+#define FLASH_PROGRAM 0x2
+#define FLASH_PROGRAM4 0x12
+#define FLASH_ERASE 0xd8
+#define FLASH_ERASE4 0xdc
+
 #define APP_NAME "QSPI Flasher"
 
 struct qspi {
@@ -201,11 +208,37 @@ void qspi_xfer(void *tx_buf, void *rx_buf, int len, bool is_last)
 		qspi->CTRL_AUX &= ~0x80;
 }
 
+/* Write command and address to the buffer.
+ * buf - buffer for filling. Must be 5 bytes length.
+ * cmd24 - command for 24-bit addressing.
+ * cmd32 - command for 32-bit addressing.
+ * addr - address of data in SPI Flash.
+ * Return count of filled bytes (4 or 5).
+ */
+int qspi_flash_fill_cmd_addr(uint8_t *buf, uint8_t cmd24, uint8_t cmd32, uint32_t addr)
+{
+	int addr_bytes;
+
+	if (addr >> 24) {
+		buf[0] = cmd32;
+		addr_bytes = 4;
+	} else {
+		buf[0] = cmd24;
+		addr_bytes = 3;
+	}
+
+	for (int i = 1; i <= addr_bytes; i++)
+		buf[i] = (addr >> ((addr_bytes - i) * 8)) & 0xff;
+
+	return addr_bytes + 1;
+}
+
 void qspi_flash_read(void *buf, int len, uint32_t offset)
 {
-	uint8_t tmp_buf[4] = { 0x3, (offset >> 16) & 0xff, (offset >> 8) & 0xff, offset & 0xff };
+	uint8_t tmp_buf[5];
+	int buf_len = qspi_flash_fill_cmd_addr(tmp_buf, FLASH_READ, FLASH_READ4, offset);
 
-	qspi_xfer(tmp_buf, NULL, 4, false);
+	qspi_xfer(tmp_buf, NULL, buf_len, false);
 	qspi_xfer(NULL, buf, len, true);
 }
 
@@ -236,9 +269,10 @@ uint8_t qspi_flash_read_status1(void)
 
 void qspi_flash_erase(uint32_t offset)
 {
-	uint8_t data[4] = { 0xd8, (offset >> 16) & 0xff, (offset >> 8) & 0xff, offset & 0xff };
+	uint8_t data[5];
+	int buf_len = qspi_flash_fill_cmd_addr(data, FLASH_ERASE, FLASH_ERASE4, offset);
 
-	qspi_xfer(&data, NULL, 4, true);
+	qspi_xfer(&data, NULL, buf_len, true);
 
 	while (qspi_flash_read_status1() & SR1_BUSY) {
 	}
@@ -246,16 +280,19 @@ void qspi_flash_erase(uint32_t offset)
 
 void qspi_flash_write(void *buf, int len, uint32_t offset)
 {
-	uint8_t tmp_buf[4] = { 0x2, (offset >> 16) & 0xff, (offset >> 8) & 0xff, offset & 0xff };
+	uint8_t tmp_buf[5];
+	int buf_len;
 	uint8_t *ptr = (uint8_t *)buf;
 
 	while (len) {
 		int block_len = len < 256 ? len : 256;
+		buf_len = qspi_flash_fill_cmd_addr(tmp_buf, FLASH_PROGRAM, FLASH_PROGRAM4, offset);
 
 		len -= block_len;
-		qspi_xfer(tmp_buf, NULL, 4, false);
+		qspi_xfer(tmp_buf, NULL, buf_len, false);
 		qspi_xfer(ptr, NULL, block_len, len == 0);
 		ptr += block_len;
+		offset += block_len;
 		while (qspi_flash_read_status1() & SR1_BUSY) {
 		}
 	}
