@@ -131,6 +131,10 @@ const struct {
 	},
 };
 
+unsigned long __stack_chk_guard;
+void __stack_chk_fail(void)
+{
+}
 
 int qspi_init(int id, int v18)
 {

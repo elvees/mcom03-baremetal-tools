@@ -1,28 +1,46 @@
+=========================
+Baremetal-утилиты MCom-03
+=========================
+
+Репозиторий содержит baremetal-приложения для запуска на процессорах ARM CPU0 и MIPS32 RISC0.
+
+.. contents:: Содержание
+
+Тулчейны
+========
+
+Для сборки используются тулчейны ARM и RISC. Для RISC должен использоваться тулчейн производства
+ЭЛВИС (тулчейн реализует обходы аппаратных ошибок ядра).
+
+Оба тулчейна входят в состав `MCom-03 Linux SDK <https://dist.elvees.com/mcom03/docs/linux-sdk/>`_.
+Описание тулчейнов — `Средства сборки <https://dist.elvees.com/mcom03/docs/linux-sdk/2023.03/components/buildroot.html#toolchain>`_
+
+Подготовка среды::
+
+  wget https://dist.elvees.com/mcom03/buildroot/2023.03/rockpi/images/aarch64-buildroot-linux-gnu_sdk-buildroot.tar.gz
+  tar -xf aarch64-buildroot-linux-gnu_sdk-buildroot.tar.gz
+  source aarch64-buildroot-linux-gnu_sdk-buildroot/environment-setup
+  export MIPS32_CMAKE_TOOLCHAIN_FILE=$PWD/aarch64-buildroot-linux-gnu_sdk-buildroot/opt/toolchain-mipsel-elvees-elf32/share/cmake/toolchain.cmake
+  export ARM_CMAKE_TOOLCHAIN_FILE=$PWD/aarch64-buildroot-linux-gnu_sdk-buildroot/share/buildroot/toolchainfile.cmake
+
+.. note:: Ссылка на релиз MCom-03 Buidroot приведена справочно. Последняя версия данного репозитория
+   может требовать более свежих версий компиляторов.
+
 Сборка
 ======
 
-Для сборки выполнить:
+Сборка проекта для MIPS32 (RISC0)::
 
-#. Настроить среду сборки::
+  mkdir build-mips
+  cmake -S . -B build-mips \
+    -DCMAKE_TOOLCHAIN_FILE=$SDK/opt/toolchain-mipsel-elvees-elf32/share/cmake/toolchain.cmake
+  make -j -C build-mips
 
-     export MODULEPATH+=:/usr/corp/Projects/ipcam-vip1/modules
-     module load cmake
+Сборка проекта ARM64 (CPU0)::
 
-#. Выбрать один из тулчейнов
-
-   * Для сборки под MIPS (RISC0)::
-
-       module load toolchain/mips/codescape/img/bare/2018.09-03
-
-   * Для сборки под ARM64 (CPU0)::
-
-       module load toolchain/aarch64/bootlin/stable/2018.02
-
-#. Запустить сборку::
-
-     mkdir build && cd build
-     cmake ../ -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE
-     make
+  mkdir build-arm
+  cmake -S . -B build-arm -DCMAKE_TOOLCHAIN_FILE=$SDK/share/buildroot/toolchainfile.cmake
+  make -j -C build-arm
 
 Разработка
 ==========

@@ -18,6 +18,8 @@ SECTIONS
     *(.text.*)
     *(.rodata)
     *(.rodata.*)
+    *(.got)
+    *(.got.*)
     . = ALIGN(4);
   } > CONFIG_REGION
 
@@ -56,5 +58,14 @@ SECTIONS
   /DISCARD/ : {
     *(.reginfo)
     *(.MIPS.abiflags)
+    *(.dynamic)
+    *(.interp)
+    *(.rela.*)
+    *(.eh_frame_hdr)
+    *(.dynstr)
+    *(.hash)
+    *(.dynsym)
+    *(.gnu.hash)
+    *(.comment)
   }
 }
