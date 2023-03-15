@@ -124,10 +124,10 @@ const struct {
 	{
 		.cmd_id = CMD_CUSTOM,
 		.cmd = "custom",
-		.help = "send custom command byte and read answer: custom <cmd> <size>",
+		.help = "send custom data and read answer: custom <tx_data> <rx_size>",
 		.arg_min = 2,
 		.arg_max = 2,
-		.arg_types = { ARG_UINT, ARG_UINT },
+		.arg_types = { ARG_STR, ARG_UINT },
 	},
 };
 
@@ -367,17 +367,74 @@ static void iface_write_data(uint32_t offset)
 	}
 }
 
-static void iface_custom(uint32_t cmd, uint32_t size)
+static inline uint32_t hexchar2uint(char ch)
+{
+	if (ch >= '0' && ch <= '9')
+		return ch - '0';
+	else if (ch >= 'a' && ch <= 'f')
+		return ch - 'a' + 10;
+	else if (ch >= 'A' && ch <= 'F')
+		return ch - 'A' + 10;
+	else
+		return (uint32_t)-1;
+}
+
+/* Parse hex string and fill array with uint8_t elements.
+ * s - null-terminated string with long hex. Can be start from "0x" or not. Example: "abcdef123456"
+ *     String length must be even.
+ * bytes - array to fill
+ * len - length of array
+ * ok - will be write false if some error occur otherwise will be write true
+ * Return count of filled bytes or 0xffffffff if data can not be fit into bytes
+ * (also *ok will be false).
+ */
+static uint32_t hexstr2uint8array(char *s, uint8_t *bytes, uint32_t len, bool *ok)
+{
+	uint32_t idx = 0;
+	uint32_t value;
+
+	if (s[0] == '0' && s[1] == 'x')
+		s += 2;
+
+	while (*s) {
+		if (idx >= len) {
+			if (ok)
+				*ok = false;
+			return (uint32_t)-1;
+		}
+		value = hexchar2uint(*s) << 4;
+		s++;
+		value |= hexchar2uint(*s);
+		if (value >= 0xff) {
+			if (ok)
+				*ok = false;
+			return idx;
+		}
+		s++;
+		bytes[idx++] = value;
+	}
+	if (ok)
+		*ok = true;
+
+	return idx;
+}
+
+static void iface_custom(char *tx_str, uint32_t size)
 {
 	uint8_t buf[1024];
 	uint32_t len;
+	bool ok;
 
-	if (cmd > 0xff) {
-		uart_puts("Error: Command must be in range [0 .. 0xff]\n");
+	len = hexstr2uint8array(tx_str, buf, sizeof(buf), &ok);
+	if (!ok) {
+		uart_puts("Error: ");
+		if (len == (uint32_t)-1)
+			uart_puts("data size is too big\n");
+		else
+			uart_puts("can not parse HEX in data\n");
 		return;
 	}
-	buf[0] = cmd & 0xff;
-	qspi_xfer(buf, NULL, 1, false);
+	qspi_xfer(buf, NULL, len, false);
 	while (size) {
 		len = size > sizeof(buf) ? sizeof(buf) : size;
 		size -= len;
@@ -460,25 +517,22 @@ static void iface_read(uint32_t offset, uint32_t size, char *mode)
 	}
 }
 
-uint32_t str2uint(char *s, bool *ok)
+static uint32_t str2uint(char *s, bool *ok)
 {
 	uint32_t value = 0;
+	uint32_t val_char;
 
 	if (s[0] == '0' && s[1] == 'x') {
 		s = s + 2;
 		while (*s) {
 			value <<= 4;
-			if (*s >= '0' && *s <= '9')
-				value |= *s - '0';
-			else if (*s >= 'a' && *s <= 'f')
-				value |= *s - 'a' + 10;
-			else if (*s >= 'A' && *s <= 'F')
-				value |= *s - 'A' + 10;
-			else {
+			val_char = hexchar2uint(*s);
+			if (val_char == (uint32_t)-1) {
 				if (ok)
 					*ok = false;
 				return 0;
 			}
+			value |= val_char;
 			s++;
 		}
 	} else {
@@ -563,7 +617,7 @@ void iface_execute(char *cmd, char *args[], int argc)
 		uart_printf("%#x\n", iface_read_crc(arguments[0].uint, arguments[1].uint));
 		break;
 	case CMD_CUSTOM:
-		iface_custom(arguments[0].uint, arguments[1].uint);
+		iface_custom(arguments[0].str, arguments[1].uint);
 		break;
 	default:
 		break;
