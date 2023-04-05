@@ -1,6 +1,5 @@
-/*
- * Copyright 2020 RnD Center "ELVEES", JSC
- */
+// SPDX-License-Identifier: MIT
+// Copyright 2020 RnD Center "ELVEES", JSC
 
 #ifndef UART_H_
 #define UART_H_

@@ -1,6 +1,5 @@
-/*
- * Copyright 2021 RnD Center "ELVEES", JSC
- */
+// SPDX-License-Identifier: MIT
+// Copyright 2021 RnD Center "ELVEES", JSC
 
 #ifndef REGS_H_
 #define REGS_H_

@@ -1,6 +1,5 @@
-/*
- * Copyright 2021 RnD Center "ELVEES", JSC
- */
+// SPDX-License-Identifier: MIT
+// Copyright 2021 RnD Center "ELVEES", JSC
 
 #include <stdarg.h>
 #include <stdint.h>

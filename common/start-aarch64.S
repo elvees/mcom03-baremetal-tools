@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2021 RnD Center "ELVEES", JSC
+
 .section ".text.boot"
 
 .global _start
