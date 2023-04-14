@@ -434,7 +434,7 @@ static void iface_custom(char *tx_str, uint32_t size)
 			uart_puts("can not parse HEX in data\n");
 		return;
 	}
-	qspi_xfer(buf, NULL, len, false);
+	qspi_xfer(buf, NULL, len, !size);
 	while (size) {
 		len = size > sizeof(buf) ? sizeof(buf) : size;
 		size -= len;
