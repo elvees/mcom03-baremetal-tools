@@ -408,7 +408,7 @@ static uint32_t hexstr2uint8array(char *s, uint8_t *bytes, uint32_t len, bool *o
 		value = hexchar2uint(*s) << 4;
 		s++;
 		value |= hexchar2uint(*s);
-		if (value >= 0xff) {
+		if (value > 0xff) {
 			if (ok)
 				*ok = false;
 			return idx;
