@@ -99,10 +99,10 @@ const struct {
 	{
 		.cmd_id = CMD_WRITE,
 		.cmd = "write",
-		.help = "turn to write mode (requred binary data) : write <offset>",
-		.arg_min = 1,
-		.arg_max = 1,
-		.arg_types = { ARG_UINT },
+		.help = "turn to write mode (requred binary data) : write <offset> <page_size>",
+		.arg_min = 2,
+		.arg_max = 2,
+		.arg_types = { ARG_UINT, ARG_UINT },
 	},
 	{
 		.cmd_id = CMD_READ,
@@ -281,23 +281,15 @@ void qspi_flash_erase(uint32_t offset)
 	}
 }
 
-void qspi_flash_write(void *buf, int len, uint32_t offset)
+void qspi_flash_write_page(void *buf, uint32_t len, uint32_t offset)
 {
 	uint8_t tmp_buf[5];
 	int buf_len;
-	uint8_t *ptr = (uint8_t *)buf;
 
-	while (len) {
-		int block_len = len < 256 ? len : 256;
-		buf_len = qspi_flash_fill_cmd_addr(tmp_buf, FLASH_PROGRAM, FLASH_PROGRAM4, offset);
-
-		len -= block_len;
-		qspi_xfer(tmp_buf, NULL, buf_len, false);
-		qspi_xfer(ptr, NULL, block_len, len == 0);
-		ptr += block_len;
-		offset += block_len;
-		while (qspi_flash_read_status1() & SR1_BUSY) {
-		}
+	buf_len = qspi_flash_fill_cmd_addr(tmp_buf, FLASH_PROGRAM, FLASH_PROGRAM4, offset);
+	qspi_xfer(tmp_buf, NULL, buf_len, false);
+	qspi_xfer((uint8_t *)buf, NULL, len, true);
+	while (qspi_flash_read_status1() & SR1_BUSY) {
 	}
 }
 
@@ -334,12 +326,12 @@ static uint16_t iface_read_crc(uint32_t offset, uint32_t size)
 	return crc;
 }
 
-static void iface_write_data(uint32_t offset)
+void iface_write_data(uint32_t offset, uint32_t size)
 {
 	uint16_t block_size;
 	uint16_t expected_crc;
 	uint16_t crc;
-	uint8_t buf[256];
+	uint8_t buf[size];
 
 	while (1) {
 		block_size = uart_getchar();
@@ -364,7 +356,7 @@ static void iface_write_data(uint32_t offset)
 			continue;
 		}
 		qspi_flash_write_enable();
-		qspi_flash_write(buf, block_size, offset);
+		qspi_flash_write_page(buf, block_size, offset);
 		offset += block_size;
 		uart_putc('R');
 	}
@@ -610,8 +602,12 @@ void iface_execute(char *cmd, char *args[], int argc)
 		uart_puts("OK\n");
 		break;
 	case CMD_WRITE:
+		if (arguments[1].uint == 0 || arguments[1].uint > 32 * 1024) {
+			uart_puts("E\nWrong page size. Must be 0 < page <= 32768\n");
+			break;
+		}
 		uart_puts("Ready for data\n#");
-		iface_write_data(arguments[0].uint);
+		iface_write_data(arguments[0].uint, arguments[1].uint);
 		break;
 	case CMD_READ:
 		iface_read(arguments[0].uint, arguments[1].uint, arguments[2].str);
