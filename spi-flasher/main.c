@@ -463,7 +463,7 @@ int strcmp(char *s1, char *s2)
 static void iface_read(uint32_t offset, uint32_t size, char *mode)
 {
 	int mode_int;
-	char buf[1024];
+	uint8_t buf[1024];
 	char text[17];
 
 	if (!mode || !strcmp(mode, "text")) {
