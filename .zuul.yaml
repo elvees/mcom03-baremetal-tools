@@ -3,3 +3,13 @@
     check:
       jobs:
         - pre-commit
+        - mcom03-aarch64-cmake-build:
+            vars:
+              cmake_extra_configure_options: >-
+                -DCMAKE_C_FLAGS="-Wall -Werror"
+                -DCMAKE_CXX_FLAGS="-Wall -Werror"
+        - mcom03-mips32-cmake-build:
+            vars:
+              cmake_extra_configure_options: >-
+                -DCMAKE_C_FLAGS="-Wall -Werror"
+                -DCMAKE_CXX_FLAGS="-Wall -Werror"
