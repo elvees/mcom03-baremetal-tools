@@ -11,6 +11,8 @@ if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
     set(XIP_NOM "1")
     set(CONFIG_ARCH "aarch64")
     set(RAM_ADDR "0x00000000")
+    # Loading address must be away from U-Boot memory
+    set(ELF_LOAD_ADDR "0x891000000")
 else()
     add_definitions(-DMIPS32)
     add_compile_options(-Wall -EL -mips32 -mabi=32 -fno-builtin-malloc

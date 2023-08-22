@@ -15,7 +15,7 @@ endif()
 
 foreach(REGION IN ITEMS ${REGIONS})
     if(${REGION} STREQUAL "uboot")
-        set(CONFIG_RAM_ADDR "0x890000000")
+        set(CONFIG_RAM_ADDR ${ELF_LOAD_ADDR})
         set(CONFIG_REGION "ram")
     else()
         set(CONFIG_RAM_ADDR ${RAM_ADDR})
