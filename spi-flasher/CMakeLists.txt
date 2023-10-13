@@ -27,6 +27,11 @@ foreach(REGION IN ITEMS ${REGIONS})
     add_executable(${FNAME}.elf ../common/start-${CONFIG_ARCH}.S main.c ../common/uart.c)
     set_target_properties(${FNAME}.elf
         PROPERTIES LINK_FLAGS "-Wl,-Map=${FNAME}.map -T ${FNAME}.ld")
+
+    if(${REGION} STREQUAL "uboot")
+        target_compile_definitions(${FNAME}.elf PUBLIC CAN_RETURN)
+    endif()
+
     add_custom_command(
         TARGET ${FNAME}.elf PRE_BUILD
         COMMAND cp ${PROJECT_SOURCE_DIR}/link.ld.in ${FNAME}.ld

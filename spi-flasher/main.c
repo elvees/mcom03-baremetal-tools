@@ -52,6 +52,8 @@ enum cmd_ids {
 	CMD_READ,
 	CMD_READ_CRC,
 	CMD_CUSTOM,
+	CMD_BOOTROM,
+	CMD_EXIT,
 };
 
 enum arg_types {
@@ -60,6 +62,7 @@ enum arg_types {
 };
 
 
+bool need_exit;
 struct qspi *qspi;
 struct {
 	char line[64];
@@ -128,11 +131,62 @@ const struct {
 		.arg_max = 2,
 		.arg_types = { ARG_STR, ARG_UINT },
 	},
+#ifdef MIPS32
+	{
+		.cmd_id = CMD_BOOTROM,
+		.cmd = "bootrom",
+		.help = "Restart BootROM",
+		.arg_min = 0,
+		.arg_max = 0,
+	},
+#endif
+#ifdef CAN_RETURN
+	{
+		.cmd_id = CMD_EXIT,
+		.cmd = "exit",
+		.help = "Exit to U-Boot",
+		.arg_min = 0,
+		.arg_max = 0,
+	},
+#endif
 };
 
 unsigned long __stack_chk_guard;
 void __stack_chk_fail(void)
 {
+}
+
+static void delay_loop(void)
+{
+	for (volatile int i = 0; i < 10000; i++) {
+	}
+}
+
+void run_bootrom(void)
+{
+	void (*bootrom)(void) = (void *)0x9fc00000;
+	ucg_regs_t *ucg;
+
+	uart_printf("Restore default state and restart BootROM...\n");
+	uart_flush();
+	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
+	ucg->BP_CTR_REG = 0xffff;
+	delay_loop();
+	REG(SERVICE_URB_PLL) = 0;  // SERVICE PLL to 27 MHz
+	delay_loop();
+	ucg->CTR_REG[0] = 0x402;   // CLK_APB to 27 MHz
+	ucg->CTR_REG[1] = 0x402;   // CLK_CORE to 27 MHz
+	ucg->CTR_REG[2] = 0x402;   // CLK_QSPI0 to 27 MHz
+	ucg->CTR_REG[13] = 0x402;  // CLK_QSPI0_EXT to 27 MHz
+	delay_loop();
+	ucg->BP_CTR_REG = 0;
+	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(0)));
+	ucg->CTR_REG[12] = 0x400;  // CLK_QSPI1 to 27 MHz and disable
+	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(1)));
+	ucg->CTR_REG[3] = 0x400;   // CLK_QSPI1_EXT to 27 MHz and disable
+	REG(XIP_EN_REQ) = 1;       // QSPI0 to XIP mode
+	REG(HSP_URB_XIP_EN_REQ) = 1;  // QSPI1 from XIP mode
+	bootrom();  // BootROM will reconfigure all registers and never return to SPI Flasher
 }
 
 int qspi_init(int id, int v18)
@@ -618,6 +672,16 @@ void iface_execute(char *cmd, char *args[], int argc)
 	case CMD_CUSTOM:
 		iface_custom(arguments[0].str, arguments[1].uint);
 		break;
+#ifdef MIPS32
+	case CMD_BOOTROM:
+		run_bootrom();
+		break;
+#endif
+#ifdef CAN_RETURN
+	case CMD_EXIT:
+		need_exit = true;
+		break;
+#endif
 	default:
 		break;
 	}
@@ -695,14 +759,87 @@ void iface_process(void)
 	cmd_line.line[cmd_line.pos] = '\0';
 }
 
-static void delay_loop(void)
+#ifdef CAN_RETURN
+struct clock_settings {
+	uint32_t service_pll;
+	uint32_t service_ucg_apb;
+	uint32_t service_ucg_core;
+	uint32_t service_ucg_qspi0;
+	uint32_t service_ucg_qspi0_ext;
+	uint32_t hsp_pll;
+	uint32_t hsp_ucg_qspi1;
+	uint32_t hsp_ucg_qspi1_ext;
+	bool is_service_changed;
+};
+
+static void save_clock_settings(struct clock_settings *clock_settings)
 {
-	for (volatile int i = 0; i < 10000; i++) {
-	}
+	ucg_regs_t *ucg;
+
+	clock_settings->hsp_pll = REG(HSP_URB_PLL);
+	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
+	clock_settings->service_pll = REG(SERVICE_URB_PLL);
+	if ((clock_settings->service_pll & 0xff) != 7)
+		clock_settings->is_service_changed = true;
+
+	clock_settings->service_ucg_apb = ucg->CTR_REG[0];
+	clock_settings->service_ucg_core = ucg->CTR_REG[1];
+	clock_settings->service_ucg_qspi0 = ucg->CTR_REG[2];
+	clock_settings->service_ucg_qspi0_ext = ucg->CTR_REG[13];
+
+	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(0)));
+	clock_settings->hsp_ucg_qspi1 = ucg->CTR_REG[12];
+	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(1)));
+	clock_settings->hsp_ucg_qspi1_ext = ucg->CTR_REG[3];
 }
+
+static void restore_clock_settings(struct clock_settings *clock_settings)
+{
+	ucg_regs_t *ucg;
+
+	if (clock_settings->is_service_changed) {
+		ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
+		ucg->BP_CTR_REG = 0xffff;
+		delay_loop();
+		REG(SERVICE_URB_PLL) = clock_settings->service_pll;
+		delay_loop();
+		ucg->CTR_REG[0] = clock_settings->service_ucg_apb;
+		ucg->CTR_REG[1] = clock_settings->service_ucg_core;
+		ucg->CTR_REG[2] = clock_settings->service_ucg_qspi0;
+		ucg->CTR_REG[13] = clock_settings->service_ucg_qspi0_ext;
+		delay_loop();
+		ucg->BP_CTR_REG = 0;
+	}
+	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(0)));
+	ucg->BP_CTR_REG |= BIT(12);
+	ucg->CTR_REG[12] = clock_settings->hsp_ucg_qspi1;
+	delay_loop();
+	ucg->BP_CTR_REG &= ~BIT(12);
+
+	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(1)));
+	ucg->BP_CTR_REG |= BIT(3);
+	ucg->CTR_REG[3] = clock_settings->hsp_ucg_qspi1_ext;
+	delay_loop();
+	ucg->BP_CTR_REG &= ~BIT(3);
+
+	REG(HSP_URB_PLL) = clock_settings->hsp_pll;
+}
+#else
+struct clock_settings {
+};
+
+static void save_clock_settings(struct clock_settings *clock_settings)
+{
+}
+
+static void restore_clock_settings(struct clock_settings *clock_settings)
+{
+}
+#endif
 
 int main(void)
 {
+	struct clock_settings clock_settings;
 	ucg_regs_t *ucg;
 
 	REG(TOP_CLKGATE) |= BIT(4) | BIT(6);  // Enable clock to HSPERIPH and LSPERIPH1
@@ -715,6 +852,7 @@ int main(void)
 	while ((REG(HSPERIPH_SUBS_PSTATUS) & 0x1f) != PP_ON) {
 	}
 
+	save_clock_settings(&clock_settings);
 	if ((REG(SERVICE_URB_PLL) & 0xff) != 7) {
 		// Setup SERVICE clocks as in UART boot mode
 		ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
@@ -766,9 +904,14 @@ int main(void)
 	uart_init(XTI_FREQUENCY, 115200);
 	qspi_init(0, 1);
 	uart_printf("%s\n#", APP_NAME);
-	while (1) {
+	while (!need_exit) {
 		iface_process();
 	}
+	restore_clock_settings(&clock_settings);
+#ifdef CAN_RETURN
+	uart_puts("\nExit from " APP_NAME "\n");
+	uart_flush();
+#endif
 
 	return 0;
 }
