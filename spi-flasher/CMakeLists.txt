@@ -46,6 +46,7 @@ foreach(REGION IN ITEMS ${REGIONS})
         add_custom_command(TARGET ${FNAME}.elf POST_BUILD COMMAND objcopy
             -O ihex ${FNAME}.elf ${FNAME}.hex
             BYPRODUCTS ${FNAME}.hex)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${FNAME}.hex DESTINATION .)
     endif()
 
     install(TARGETS ${FNAME}.elf DESTINATION .)
