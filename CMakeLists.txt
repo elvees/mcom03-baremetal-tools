@@ -11,7 +11,8 @@ add_compile_definitions(XTI_FREQUENCY=${XTI_FREQUENCY} GIT_SHA1_SHORT=${GIT_SHA1
     BUILD_ID=${BUILD_ID})
 
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
-    add_compile_options(-Wall -fno-builtin-malloc -ffreestanding -ffunction-sections -fdata-sections)
+    add_compile_options(-Wall -fno-builtin-malloc -ffreestanding -ffunction-sections
+        -fdata-sections)
     add_link_options(-nostdlib -Wl,--gc-sections)
     set(XIP_NOM "1")
     set(CONFIG_ARCH "aarch64")

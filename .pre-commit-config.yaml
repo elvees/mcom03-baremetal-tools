@@ -1,7 +1,7 @@
 ---
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.5.0
+    rev: v4.5.0
     hooks:
       - id: check-byte-order-marker
       - id: check-executables-have-shebangs
@@ -12,11 +12,11 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.20.0
+    rev: v1.33.0
     hooks:
       - id: yamllint
   - repo: https://github.com/PyCQA/doc8
-    rev: 0.8.1rc3
+    rev: v1.1.1
     hooks:
       - id: doc8
         args: [--quiet, --max-line-length=100]
@@ -30,12 +30,12 @@ repos:
         pass_filenames: false
         stages: [manual]
   - repo: https://github.com/bmorcos/pre-commit-hooks-cpp
-    rev: master
+    rev: 9a5aa38207bf557961110d6a4f7e3a9d352911f9
     hooks:
       - id: cppcheck
         args: [--suppress=objectIndex]
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.1
+    rev: v1.5.4
     hooks:
       # SPDX license headers and comments style should match rules defined in
       # https://spdx.dev/ids/#how
@@ -48,3 +48,12 @@ repos:
         args:
           - --license-filepath=.license-header
           - --comment-style=//
+  - repo: https://github.com/cmake-lint/cmake-lint
+    rev: 1.4.2
+    hooks:
+      - id: cmakelint
+        args: [--linelength=100]
+  - repo: https://review.elvees.com/pre-commit-hooks
+    rev: 316005076123772cef195737b0cffb4b74ca2bd0
+    hooks:
+      - id: check-copyright

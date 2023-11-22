@@ -1,3 +1,5 @@
+.. Copyright 2021-2023 RnD Center "ELVEES", JSC
+
 =========================
 Baremetal-утилиты MCom-03
 =========================
