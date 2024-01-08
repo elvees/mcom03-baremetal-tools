@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <gpio.h>
 #include <qspi.h>
 #include <regs.h>
 #include <uart.h>
@@ -827,7 +828,8 @@ int main(void)
 	REG(LSP1_URB_PAD_CTR(PORTB, 6)) = PAD_CTL_CTL(0x7) | PAD_CTL_SL(0x3);
 	REG(LSP1_URB_PAD_CTR(PORTB, 7)) = PAD_CTL_E | PAD_CTL_CTL(0x7) |
 					  PAD_CTL_SL(0x3) | PAD_CTL_SUS;
-	REG(GPIO1_SWPORTB_CTL) |= 0xc0;  // UART0 in hardware mode
+	// UART0 in hardware mode
+	gpio_set_function_mask(GPIO1, GPIO_BANK_B, BIT(6) | BIT(7), GPIO_FUNC_PERIPH);
 
 	uart_flush(UART0);
 	uart_init(UART0, XTI_FREQUENCY, 115200);

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include <gpio.h>
 #include <regs.h>
 #include <uart.h>
 
@@ -19,13 +20,18 @@ int main(void)
 	REG(LSP1_UCG_CTRL4) = 0x2;  // GPIO_DBCLK CLK_EN
 	REG(LSP1_UCG_CTRL6) = 0x2;  // UART_CLK CLK_EN
 
-	REG(GPIO1_SWPORTB_CTL) |= 0xc0;  // UART0 in hardware mode
-	REG(GPIO1_SWPORTD_CTL) = 0;  // GPIO1_PORTD in GPIO mode
-	REG(GPIO1_SWPORTD_DDR) |= 0x1;  // GPIO1_PORTD_0 to output
+	// UART0 in hardware mode
+	gpio_set_function_mask(GPIO1, GPIO_BANK_B, BIT(6) | BIT(7), GPIO_FUNC_PERIPH);
+
+	// GPIO1_PORTD_0 in GPIO mode
+	gpio_set_function(GPIO1, GPIO_BANK_D, 0, GPIO_FUNC_GPIO);
+
+	// GPIO1_PORTD_0 to output
+	gpio_set_direction(GPIO1, GPIO_BANK_D, 0, GPIO_DIR_OUT);
 
 	uart_init(UART0, XTI_FREQUENCY, 115200);
 	while (1) {
-		REG(GPIO1_SWPORTD_DR) = gpio_state;
+		gpio_set_value(GPIO1, GPIO_BANK_D, 0, gpio_state);
 		uart_puts(UART0, "Hello, world!\n");
 		gpio_state = !gpio_state;
 		for (volatile int i = 0; i < 10000; i++) {
