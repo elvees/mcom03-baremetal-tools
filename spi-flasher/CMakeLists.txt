@@ -24,7 +24,8 @@ foreach(REGION IN ITEMS ${REGIONS})
 
     set(FNAME spi-flasher-${CONFIG_ARCH}-${REGION})
 
-    add_executable(${FNAME}.elf ../common/start-${CONFIG_ARCH}.S main.c ../common/uart.c)
+    add_executable(${FNAME}.elf ../common/start-${CONFIG_ARCH}.S main.c  ../common/qspi.c
+        ../common/uart.c)
     set_target_properties(${FNAME}.elf
         PROPERTIES LINK_FLAGS "-Wl,-Map=${FNAME}.map -T ${FNAME}.ld")
 

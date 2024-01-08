@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <qspi.h>
 #include <regs.h>
 #include <uart.h>
 
@@ -27,30 +28,6 @@
 #define FLASH_ERASE4 0xdc
 
 #define APP_NAME "QSPI Flasher (commit: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "')"
-
-struct qspi {
-	volatile uint32_t TX_DATA;
-	volatile uint32_t RX_DATA;
-	volatile uint32_t reserved08;
-	volatile uint32_t CTRL;
-	volatile uint32_t CTRL_AUX;
-	volatile uint32_t STAT;
-	volatile uint32_t SS;
-	volatile uint32_t SS_POLARITY;
-	volatile uint32_t INTR_EN;
-	volatile uint32_t INTR_STAT;
-	volatile uint32_t INTR_CLR;
-	volatile uint32_t TX_FIFO_LVL;
-	volatile uint32_t RX_FIFO_LVL;
-	volatile uint32_t reserved34;
-	volatile uint32_t MASTER_DELAY;
-	volatile uint32_t ENABLE;
-	volatile uint32_t GPO_SET;
-	volatile uint32_t GPO_CLR;
-	volatile uint32_t FIFO_DEPTH;
-	volatile uint32_t FIFO_WMARK;
-	volatile uint32_t TX_DUMMY;
-};
 
 enum cmd_ids {
 	CMD_UNKNOWN = 0,
@@ -198,12 +175,12 @@ void run_bootrom(void)
 	bootrom();  // BootROM will reconfigure all registers and never return to SPI Flasher
 }
 
-int qspi_init(int id, int v18)
+int qspi_prepare(int id, int v18)
 {
 	if (id == 0)
-		qspi = (struct qspi *)(TO_VIRT(QSPI0_BASE));
+		qspi = QSPI0;
 	else if (id == 1) {
-		qspi = (struct qspi *)(TO_VIRT(QSPI1_BASE));
+		qspi = QSPI1;
 		if (v18)
 			REG(HSP_URB_QSPI1_PADCFG) |= BIT(1);
 		else
@@ -211,67 +188,9 @@ int qspi_init(int id, int v18)
 	} else
 		return -1;
 
-	qspi->CTRL = 0x25;
-	qspi->CTRL_AUX = 0x700;
-	qspi->SS = 0x1;
-	qspi->ENABLE = 0x1;
-
-	// Set high level to HOLD and WP pads
-	qspi->GPO_SET = 0xc0c;
-	qspi->GPO_CLR = 0x10c0;
+	qspi_init(qspi, 0);
 
 	return 0;
-}
-
-static void qspi_stat_wait_mask(uint32_t mask, uint32_t value)
-{
-	while ((qspi->STAT & mask) != value) {
-	}
-}
-
-void qspi_xfer(void *tx_buf, void *rx_buf, int len, bool is_last)
-{
-	uint8_t *tx = (uint8_t *)tx_buf;
-	uint8_t *rx = (uint8_t *)rx_buf;
-	int rx_count = 0;
-	int tx_count = 0;
-
-	qspi->CTRL_AUX |= 0x80;
-	while (tx_count < len) {
-		if (tx) {
-			qspi->TX_DATA = tx[tx_count];
-			tx_count++;
-		} else {
-			if (qspi->STAT & 0x4) {
-				if ((len - tx_count) > 0xf0) {
-					qspi->TX_DUMMY = 0xf0;
-					tx_count += 0xf0;
-				} else {
-					qspi->TX_DUMMY = len - tx_count;
-					tx_count += len - tx_count;
-				}
-			}
-		}
-
-		while ((qspi->STAT & 0x20) == 0) {
-			if (rx)
-				rx[rx_count] = qspi->RX_DATA & 0xff;
-			else
-				(void)qspi->RX_DATA;
-			rx_count++;
-		}
-	}
-	while (rx_count < len) {
-		qspi_stat_wait_mask(0x20, 0);
-		if (rx)
-			rx[rx_count] = qspi->RX_DATA & 0xff;
-		else
-			(void)qspi->RX_DATA;
-		rx_count++;
-	}
-	qspi_stat_wait_mask(0x1, 0);
-	if (is_last)
-		qspi->CTRL_AUX &= ~0x80;
 }
 
 /* Write command and address to the buffer.
@@ -304,22 +223,22 @@ void qspi_flash_read(void *buf, int len, uint32_t offset)
 	uint8_t tmp_buf[5];
 	int buf_len = qspi_flash_fill_cmd_addr(tmp_buf, FLASH_READ, FLASH_READ4, offset);
 
-	qspi_xfer(tmp_buf, NULL, buf_len, false);
-	qspi_xfer(NULL, buf, len, true);
+	qspi_xfer(qspi, tmp_buf, NULL, buf_len, false);
+	qspi_xfer(qspi, NULL, buf, len, true);
 }
 
 void qspi_flash_write_enable(void)
 {
 	uint8_t data = 0x6;
 
-	qspi_xfer(&data, NULL, 1, true);
+	qspi_xfer(qspi, &data, NULL, 1, true);
 }
 
 void qspi_flash_write_disable(void)
 {
 	uint8_t data = 0x4;
 
-	qspi_xfer(&data, NULL, 1, true);
+	qspi_xfer(qspi, &data, NULL, 1, true);
 }
 
 uint8_t qspi_flash_read_status1(void)
@@ -327,8 +246,8 @@ uint8_t qspi_flash_read_status1(void)
 	uint8_t cmd = 0x5;
 	uint8_t res;
 
-	qspi_xfer(&cmd, NULL, 1, false);
-	qspi_xfer(NULL, &res, 1, true);
+	qspi_xfer(qspi, &cmd, NULL, 1, false);
+	qspi_xfer(qspi, NULL, &res, 1, true);
 
 	return res;
 }
@@ -338,7 +257,7 @@ void qspi_flash_erase(uint32_t offset)
 	uint8_t data[5];
 	int buf_len = qspi_flash_fill_cmd_addr(data, FLASH_ERASE, FLASH_ERASE4, offset);
 
-	qspi_xfer(&data, NULL, buf_len, true);
+	qspi_xfer(qspi, &data, NULL, buf_len, true);
 
 	while (qspi_flash_read_status1() & SR1_BUSY) {
 	}
@@ -350,8 +269,8 @@ void qspi_flash_write_page(void *buf, uint32_t len, uint32_t offset)
 	int buf_len;
 
 	buf_len = qspi_flash_fill_cmd_addr(tmp_buf, FLASH_PROGRAM, FLASH_PROGRAM4, offset);
-	qspi_xfer(tmp_buf, NULL, buf_len, false);
-	qspi_xfer((uint8_t *)buf, NULL, len, true);
+	qspi_xfer(qspi, tmp_buf, NULL, buf_len, false);
+	qspi_xfer(qspi, buf, NULL, len, true);
 	while (qspi_flash_read_status1() & SR1_BUSY) {
 	}
 }
@@ -492,11 +411,11 @@ static void iface_custom(char *tx_str, uint32_t size)
 			uart_puts(UART0, "can not parse HEX in data\n");
 		return;
 	}
-	qspi_xfer(buf, NULL, len, !size);
+	qspi_xfer(qspi, buf, NULL, len, !size);
 	while (size) {
 		len = size > sizeof(buf) ? sizeof(buf) : size;
 		size -= len;
-		qspi_xfer(NULL, buf, len, !size);
+		qspi_xfer(qspi, NULL, buf, len, !size);
 		for (unsigned i = 0; i < len; i++)
 			uart_printf(UART0, "%02x ", buf[i]);
 	}
@@ -633,7 +552,8 @@ void iface_execute(char *cmd, char *args[], int argc)
 				if (commands[i].arg_types[j] == ARG_UINT) {
 					arguments[j].uint = str2uint(args[j], &ok);
 					if (!ok) {
-						uart_printf(UART0, "Error: Argument %d must be integer\n",
+						uart_printf(UART0,
+							    "Error: Argument %d must be integer\n",
 							    j);
 						return;
 					}
@@ -653,7 +573,7 @@ void iface_execute(char *cmd, char *args[], int argc)
 			uart_printf(UART0, "%s    - %s\n", commands[i].cmd, commands[i].help);
 		break;
 	case CMD_QSPI:
-		if (qspi_init(arguments[0].uint, arguments[1].uint))
+		if (qspi_prepare(arguments[0].uint, arguments[1].uint))
 			uart_puts(UART0, "Error: Init error\n");
 		else
 			uart_printf(UART0, "Selected QSPI%u, padcfg v18 = %u\n", arguments[0].uint,
@@ -911,7 +831,7 @@ int main(void)
 
 	uart_flush(UART0);
 	uart_init(UART0, XTI_FREQUENCY, 115200);
-	qspi_init(0, 1);
+	qspi_prepare(0, 1);
 	uart_printf(UART0, "%s\n#", APP_NAME);
 	while (!need_exit) {
 		iface_process();
