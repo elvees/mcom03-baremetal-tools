@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright 2021 RnD Center "ELVEES", JSC
+// Copyright 2021-2024 RnD Center "ELVEES", JSC
 
 #include "machine/asm.h"
 #include "machine/regdef.h"
@@ -27,8 +27,25 @@ setup_cpu:
 	la	gp, _gp
 #endif
 
-/* TODO: Need .data section copy */
+	la	a0, __data_start
+	la	a1, __data_end
+	la	a2, __text_end
 
+	/* Check if .data is already in the RAM */
+	subu	a3, a2, a0
+	beqz	a3, data_copy_done
+	nop
+data_copy_loop:
+	subu	a3, a1, a0
+	blez	a3, data_copy_done
+	nop
+	lw	a3, 0(a2)
+	sw	a3, 0(a0)
+	addiu	a0, 4
+	b	data_copy_loop
+	addiu	a2, 4  /* delayed slot */
+
+data_copy_done:
 /* Zero fill .bss/.sbss sections */
 	la	a0, __bss_start
 	la	a1, __bss_length
