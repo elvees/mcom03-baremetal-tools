@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright 2021 RnD Center "ELVEES", JSC
+// Copyright 2021-2024 RnD Center "ELVEES", JSC
 
 #include <stdint.h>
 
@@ -23,10 +23,10 @@ int main(void)
 	REG(GPIO1_SWPORTD_CTL) = 0;  // GPIO1_PORTD in GPIO mode
 	REG(GPIO1_SWPORTD_DDR) |= 0x1;  // GPIO1_PORTD_0 to output
 
-	uart_init(XTI_FREQUENCY, 115200);
+	uart_init(UART0, XTI_FREQUENCY, 115200);
 	while (1) {
 		REG(GPIO1_SWPORTD_DR) = gpio_state;
-		uart_puts("Hello, world!\n");
+		uart_puts(UART0, "Hello, world!\n");
 		gpio_state = !gpio_state;
 		for (volatile int i = 0; i < 10000; i++) {
 			asm volatile ("nop");

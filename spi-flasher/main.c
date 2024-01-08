@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright 2021 RnD Center "ELVEES", JSC
+// Copyright 2021-2024 RnD Center "ELVEES", JSC
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -176,8 +176,8 @@ void run_bootrom(void)
 	void (*bootrom)(void) = (void *)0x9fc00000;
 	ucg_regs_t *ucg;
 
-	uart_printf("Restore default state and restart BootROM...\n");
-	uart_flush();
+	uart_printf(UART0, "Restore default state and restart BootROM...\n");
+	uart_flush(UART0);
 	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 	ucg->BP_CTR_REG = 0xffff;
 	delay_loop();
@@ -397,31 +397,31 @@ void iface_write_data(uint32_t offset, uint32_t size)
 	uint8_t buf[size];
 
 	while (1) {
-		block_size = uart_getchar();
-		block_size |= (uint16_t)uart_getchar() << 8;
-		expected_crc = uart_getchar();
-		expected_crc |= (uint16_t)uart_getchar() << 8;
+		block_size = uart_getchar(UART0);
+		block_size |= (uint16_t)uart_getchar(UART0) << 8;
+		expected_crc = uart_getchar(UART0);
+		expected_crc |= (uint16_t)uart_getchar(UART0) << 8;
 		if (!block_size) {
-			uart_putc('\n');
+			uart_putc(UART0, '\n');
 			return;
 		} else if (block_size > sizeof(buf)) {
-			uart_puts("E\nBlock size is too large\n");
+			uart_puts(UART0, "E\nBlock size is too large\n");
 			return;
 		}
 		crc = crc16_init();
 		for (unsigned i = 0; i < block_size; i++) {
-			buf[i] = uart_getchar();
+			buf[i] = uart_getchar(UART0);
 			crc = crc16_update_byte(crc, buf[i]);
 		}
 
 		if (crc != expected_crc) {
-			uart_putc('C');
+			uart_putc(UART0, 'C');
 			continue;
 		}
 		qspi_flash_write_enable();
 		qspi_flash_write_page(buf, block_size, offset);
 		offset += block_size;
-		uart_putc('R');
+		uart_putc(UART0, 'R');
 	}
 }
 
@@ -485,11 +485,11 @@ static void iface_custom(char *tx_str, uint32_t size)
 
 	len = hexstr2uint8array(tx_str, buf, sizeof(buf), &ok);
 	if (!ok) {
-		uart_puts("Error: ");
+		uart_puts(UART0, "Error: ");
 		if (len == (uint32_t)-1)
-			uart_puts("data size is too big\n");
+			uart_puts(UART0, "data size is too big\n");
 		else
-			uart_puts("can not parse HEX in data\n");
+			uart_puts(UART0, "can not parse HEX in data\n");
 		return;
 	}
 	qspi_xfer(buf, NULL, len, !size);
@@ -498,9 +498,9 @@ static void iface_custom(char *tx_str, uint32_t size)
 		size -= len;
 		qspi_xfer(NULL, buf, len, !size);
 		for (unsigned i = 0; i < len; i++)
-			uart_printf("%02x ", buf[i]);
+			uart_printf(UART0, "%02x ", buf[i]);
 	}
-	uart_putc('\n');
+	uart_putc(UART0, '\n');
 }
 
 int strcmp(char *s1, char *s2)
@@ -523,24 +523,24 @@ static void iface_read(uint32_t offset, uint32_t size, char *mode)
 
 	if (!mode || !strcmp(mode, "text")) {
 		mode_int = 0;
-		uart_puts("_________");
+		uart_puts(UART0, "_________");
 		for (int i = 0; i < 16; i++) {
 			text[i] = ' ';
-			uart_printf("_%02x", i);
+			uart_printf(UART0, "_%02x", i);
 		}
 		text[16] = '\0';
 
-		uart_putc('\n');
+		uart_putc(UART0, '\n');
 		if (offset & 0xf) {
-			uart_printf("%08x:", offset & ~0xf);
+			uart_printf(UART0, "%08x:", offset & ~0xf);
 			for (int i = 0; i < (offset & 0xf); i++)
-				uart_puts("   ");
+				uart_puts(UART0, "   ");
 		}
 	} else if (!strcmp(mode, "bin")) {
 		mode_int = 1;
-		uart_putc('#');
+		uart_putc(UART0, '#');
 	} else {
-		uart_puts("Error: Unknown mode\n");
+		uart_puts(UART0, "Error: Unknown mode\n");
 		return;
 	}
 	while (size) {
@@ -550,15 +550,15 @@ static void iface_read(uint32_t offset, uint32_t size, char *mode)
 			for (unsigned i = 0; i < len; i++) {
 				uint32_t column = (offset + i) & 0xf;
 				if (column == 0)
-					uart_printf("%08x:", offset + i);
-				uart_printf(" %02x", buf[i]);
+					uart_printf(UART0, "%08x:", offset + i);
+				uart_printf(UART0, " %02x", buf[i]);
 				text[column] = (buf[i] >= 0x20 && buf[i] < 0x7f) ? buf[i] : '.';
 				if (column == 0xf)
-					uart_printf("  %s\n", text);
+					uart_printf(UART0, "  %s\n", text);
 			}
 		} else {
 			for (unsigned i = 0; i < len; i++)
-				uart_putc_raw(buf[i]);  // Do not add \r to \n
+				uart_putc_raw(UART0, buf[i]);  // Do not add \r to \n
 		}
 		size -= len;
 		offset += len;
@@ -566,10 +566,10 @@ static void iface_read(uint32_t offset, uint32_t size, char *mode)
 	if (mode_int == 0) {
 		while (offset & 0xf) {
 			uint32_t column = offset & 0xf;
-			uart_puts("   ");
+			uart_puts(UART0, "   ");
 			text[column] = ' ';
 			if (column == 0xf)
-				uart_printf("  %s\n", text);
+				uart_printf(UART0, "  %s\n", text);
 			offset++;
 		}
 	}
@@ -624,7 +624,7 @@ void iface_execute(char *cmd, char *args[], int argc)
 		if (!strcmp(commands[i].cmd, cmd)) {
 			cmd_id = commands[i].cmd_id;
 			if (argc < commands[i].arg_min || argc > commands[i].arg_max) {
-				uart_puts("Error: Wrong arguments count\n");
+				uart_puts(UART0, "Error: Wrong arguments count\n");
 				return;
 			}
 			for (int j = 0; j < argc; j++) {
@@ -633,7 +633,7 @@ void iface_execute(char *cmd, char *args[], int argc)
 				if (commands[i].arg_types[j] == ARG_UINT) {
 					arguments[j].uint = str2uint(args[j], &ok);
 					if (!ok) {
-						uart_printf("Error: Argument %d must be integer\n",
+						uart_printf(UART0, "Error: Argument %d must be integer\n",
 							    j);
 						return;
 					}
@@ -643,40 +643,40 @@ void iface_execute(char *cmd, char *args[], int argc)
 		}
 	}
 	if (cmd_id == CMD_UNKNOWN) {
-		uart_puts("Error: Unknown command\n");
+		uart_puts(UART0, "Error: Unknown command\n");
 		return;
 	}
 
 	switch (cmd_id) {
 	case CMD_HELP:
 		for (int i = 0; i < ARRAY_LENGTH(commands); i++)
-			uart_printf("%s    - %s\n", commands[i].cmd, commands[i].help);
+			uart_printf(UART0, "%s    - %s\n", commands[i].cmd, commands[i].help);
 		break;
 	case CMD_QSPI:
 		if (qspi_init(arguments[0].uint, arguments[1].uint))
-			uart_puts("Error: Init error\n");
+			uart_puts(UART0, "Error: Init error\n");
 		else
-			uart_printf("Selected QSPI%u, padcfg v18 = %u\n", arguments[0].uint,
+			uart_printf(UART0, "Selected QSPI%u, padcfg v18 = %u\n", arguments[0].uint,
 				    !!arguments[1].uint);
 		break;
 	case CMD_ERASE:
 		qspi_flash_write_enable();
 		qspi_flash_erase(arguments[0].uint);
-		uart_puts("OK\n");
+		uart_puts(UART0, "OK\n");
 		break;
 	case CMD_WRITE:
 		if (arguments[1].uint == 0 || arguments[1].uint > 32 * 1024) {
-			uart_puts("E\nWrong page size. Must be 0 < page <= 32768\n");
+			uart_puts(UART0, "E\nWrong page size. Must be 0 < page <= 32768\n");
 			break;
 		}
-		uart_puts("Ready for data\n#");
+		uart_puts(UART0, "Ready for data\n#");
 		iface_write_data(arguments[0].uint, arguments[1].uint);
 		break;
 	case CMD_READ:
 		iface_read(arguments[0].uint, arguments[1].uint, arguments[2].str);
 		break;
 	case CMD_READ_CRC:
-		uart_printf("%#x\n", iface_read_crc(arguments[0].uint, arguments[1].uint));
+		uart_printf(UART0, "%#x\n", iface_read_crc(arguments[0].uint, arguments[1].uint));
 		break;
 	case CMD_CUSTOM:
 		iface_custom(arguments[0].str, arguments[1].uint);
@@ -710,7 +710,7 @@ void iface_parse_cmd_line(void)
 		} else {
 			if (last_space) {
 				if (argc >= 5) {
-					uart_puts("Error: Too many arguments\n");
+					uart_puts(UART0, "Error: Too many arguments\n");
 					return;
 				}
 				args[argc++] = &cmd_line.line[i];
@@ -719,8 +719,8 @@ void iface_parse_cmd_line(void)
 		}
 	}
 	if (cmd_line.line[0] == '\0') {
-		uart_puts(APP_NAME);
-		uart_putc('\n');
+		uart_puts(UART0, APP_NAME);
+		uart_putc(UART0, '\n');
 		return;
 	}
 
@@ -731,23 +731,23 @@ void iface_process(void)
 {
 	uint8_t ch;
 
-	if (!uart_is_char_ready())
+	if (!uart_is_char_ready(UART0))
 		return;
 
-	ch = uart_getchar();
+	ch = uart_getchar(UART0);
 	if (ch == 0x1b)  // Ignore Esc key and esc-sequences
 		return;
 	if (ch == 0x7f) {  // Backspace
 		if (cmd_line.pos) {
 			cmd_line.line[--cmd_line.pos] = '\0';
-			uart_puts("\x1b[1D \x1b[1D");
+			uart_puts(UART0, "\x1b[1D \x1b[1D");
 		}
 		return;
 	}
 	if (cmd_line.pos >= sizeof(cmd_line.line) - 2) {
 		cmd_line.pos = 0;
 		cmd_line.line[0] = '\0';
-		uart_puts("\nError: commmand is too large\n#");
+		uart_puts(UART0, "\nError: commmand is too large\n#");
 		return;
 	}
 
@@ -755,15 +755,15 @@ void iface_process(void)
 		return;
 
 	if (ch == '\r') {
-		uart_putc('\n');
+		uart_putc(UART0, '\n');
 		iface_parse_cmd_line();
-		uart_putc('#');
+		uart_putc(UART0, '#');
 		cmd_line.pos = 0;
 		cmd_line.line[0] = '\0';
 		return;
 	}
 
-	uart_putc(ch);  // Echo
+	uart_putc(UART0, ch);  // Echo
 	cmd_line.line[cmd_line.pos++] = ch;
 	cmd_line.line[cmd_line.pos] = '\0';
 }
@@ -909,17 +909,17 @@ int main(void)
 					  PAD_CTL_SL(0x3) | PAD_CTL_SUS;
 	REG(GPIO1_SWPORTB_CTL) |= 0xc0;  // UART0 in hardware mode
 
-	uart_flush();
-	uart_init(XTI_FREQUENCY, 115200);
+	uart_flush(UART0);
+	uart_init(UART0, XTI_FREQUENCY, 115200);
 	qspi_init(0, 1);
-	uart_printf("%s\n#", APP_NAME);
+	uart_printf(UART0, "%s\n#", APP_NAME);
 	while (!need_exit) {
 		iface_process();
 	}
 	restore_clock_settings(&clock_settings);
 #ifdef CAN_RETURN
-	uart_puts("\nExit from " APP_NAME "\n");
-	uart_flush();
+	uart_puts(UART0, "\nExit from " APP_NAME "\n");
+	uart_flush(UART0);
 #endif
 
 	return 0;
