@@ -33,15 +33,12 @@ Baremetal-утилиты MCom-03
 
 Сборка проекта для MIPS32 (RISC0)::
 
-  mkdir build-mips
-  cmake -S . -B build-mips \
-    -DCMAKE_TOOLCHAIN_FILE=$SDK/opt/toolchain-mipsel-elvees-elf32/share/cmake/toolchain.cmake
+  cmake -S . -B build-mips -DCMAKE_TOOLCHAIN_FILE=$MIPS32_CMAKE_TOOLCHAIN_FILE
   make -j -C build-mips
 
 Сборка проекта ARM64 (CPU0)::
 
-  mkdir build-arm
-  cmake -S . -B build-arm -DCMAKE_TOOLCHAIN_FILE=$SDK/share/buildroot/toolchainfile.cmake
+  cmake -S . -B build-arm -DCMAKE_TOOLCHAIN_FILE=$ARM_CMAKE_TOOLCHAIN_FILE
   make -j -C build-arm
 
 Разработка
