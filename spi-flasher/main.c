@@ -431,27 +431,52 @@ int strcmp(char *s1, char *s2)
 	return 0;
 }
 
+static void print_hexdump_header(uint32_t offset)
+{
+	uart_puts(UART0, "_________");
+	for (int i = 0; i < 16; i++)
+		uart_printf(UART0, "_%02x", i);
+
+	uart_putc(UART0, '\n');
+	if (offset & 0xf) {
+		uart_printf(UART0, "%08x:", offset & ~0xf);
+		for (int i = 0; i < (offset & 0xf); i++)
+			uart_puts(UART0, "   ");
+	}
+}
+
+static void print_hexdump_body(uint8_t *buf, uint32_t offset, uint32_t len)
+{
+	char text[17] = "                ";
+	uint32_t column;
+
+	for (unsigned i = 0; i < len; i++) {
+		column = (offset + i) & 0xf;
+		if (column == 0)
+			uart_printf(UART0, "%08x:", offset + i);
+		uart_printf(UART0, " %02x", buf[i]);
+		text[column] = (buf[i] >= 0x20 && buf[i] < 0x7f) ? buf[i] : '.';
+		if (column == 0xf)
+			uart_printf(UART0, "  %s\n", text);
+	}
+	column = (offset + len) & 0xf;
+	text[column] = '\0';
+	while (column & 0xf) {
+		uart_puts(UART0, "   ");
+		if (column == 0xf)
+			uart_printf(UART0, "  %s\n", text);
+		column++;
+	}
+}
+
 static void iface_read(uint32_t offset, uint32_t size, char *mode)
 {
 	int mode_int;
 	uint8_t buf[1024];
-	char text[17];
 
 	if (!mode || !strcmp(mode, "text")) {
 		mode_int = 0;
-		uart_puts(UART0, "_________");
-		for (int i = 0; i < 16; i++) {
-			text[i] = ' ';
-			uart_printf(UART0, "_%02x", i);
-		}
-		text[16] = '\0';
-
-		uart_putc(UART0, '\n');
-		if (offset & 0xf) {
-			uart_printf(UART0, "%08x:", offset & ~0xf);
-			for (int i = 0; i < (offset & 0xf); i++)
-				uart_puts(UART0, "   ");
-		}
+		print_hexdump_header(offset);
 	} else if (!strcmp(mode, "bin")) {
 		mode_int = 1;
 		uart_putc(UART0, '#');
@@ -463,31 +488,13 @@ static void iface_read(uint32_t offset, uint32_t size, char *mode)
 		uint32_t len = size > sizeof(buf) ? sizeof(buf) : size;
 		qspi_flash_read(buf, len, offset);
 		if (mode_int == 0) {
-			for (unsigned i = 0; i < len; i++) {
-				uint32_t column = (offset + i) & 0xf;
-				if (column == 0)
-					uart_printf(UART0, "%08x:", offset + i);
-				uart_printf(UART0, " %02x", buf[i]);
-				text[column] = (buf[i] >= 0x20 && buf[i] < 0x7f) ? buf[i] : '.';
-				if (column == 0xf)
-					uart_printf(UART0, "  %s\n", text);
-			}
+			print_hexdump_body(buf, offset, len);
 		} else {
 			for (unsigned i = 0; i < len; i++)
 				uart_putc_raw(UART0, buf[i]); // Do not add \r to \n
 		}
 		size -= len;
 		offset += len;
-	}
-	if (mode_int == 0) {
-		while (offset & 0xf) {
-			uint32_t column = offset & 0xf;
-			uart_puts(UART0, "   ");
-			text[column] = ' ';
-			if (column == 0xf)
-				uart_printf(UART0, "  %s\n", text);
-			offset++;
-		}
 	}
 }
 
