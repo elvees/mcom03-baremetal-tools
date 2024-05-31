@@ -7,13 +7,13 @@
 #include <qspi.h>
 #include <regs.h>
 
-#define CTRL_CONT_XFER	BIT(0)
-#define CTRL_MSB1ST	BIT(2)
-#define CTRL_CPHA	BIT(3)
-#define CTRL_CPOL	BIT(4)
-#define CTRL_MASTER	BIT(5)
-#define CTRL_DMA	BIT(10)
-#define CTRL_MWAIT_EN	BIT(11)
+#define CTRL_CONT_XFER BIT(0)
+#define CTRL_MSB1ST    BIT(2)
+#define CTRL_CPHA      BIT(3)
+#define CTRL_CPOL      BIT(4)
+#define CTRL_MASTER    BIT(5)
+#define CTRL_DMA       BIT(10)
+#define CTRL_MWAIT_EN  BIT(11)
 
 static void _qspi_select_slave(struct qspi *qspi, uint8_t ss)
 {
@@ -23,7 +23,7 @@ static void _qspi_select_slave(struct qspi *qspi, uint8_t ss)
 void qspi_init(struct qspi *qspi, uint8_t ss)
 {
 	qspi->CTRL = CTRL_MASTER | CTRL_MSB1ST | CTRL_CONT_XFER;
-	qspi->CTRL_AUX = 0x700;  // bitsize = 8 bits
+	qspi->CTRL_AUX = 0x700; // bitsize = 8 bits
 	_qspi_select_slave(qspi, ss);
 	qspi->ENABLE = 0x1;
 
@@ -50,7 +50,7 @@ void qspi_xfer(struct qspi *qspi, void *tx_buf, void *rx_buf, int len, bool is_l
 	int rx_count = 0;
 	int tx_count = 0;
 
-	qspi->CTRL_AUX |= 0x80;  // assert SS signal
+	qspi->CTRL_AUX |= 0x80; // assert SS signal
 	while (tx_count < len) {
 		if (tx) {
 			qspi->TX_DATA = tx[tx_count];
@@ -76,14 +76,14 @@ void qspi_xfer(struct qspi *qspi, void *tx_buf, void *rx_buf, int len, bool is_l
 		}
 	}
 	while (rx_count < len) {
-		qspi_stat_wait_mask(qspi, 0x20, 0);  // wait for clear RX_EMPTY
+		qspi_stat_wait_mask(qspi, 0x20, 0); // wait for clear RX_EMPTY
 		if (rx)
 			rx[rx_count] = qspi->RX_DATA & 0xff;
 		else
 			(void)qspi->RX_DATA;
 		rx_count++;
 	}
-	qspi_stat_wait_mask(qspi, 0x1, 0);  // wait while xfer in progress
+	qspi_stat_wait_mask(qspi, 0x1, 0); // wait while xfer in progress
 	if (is_last)
-		qspi->CTRL_AUX &= ~0x80;  // deassert SS signal
+		qspi->CTRL_AUX &= ~0x80; // deassert SS signal
 }

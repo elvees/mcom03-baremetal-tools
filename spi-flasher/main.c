@@ -21,14 +21,15 @@
 
 #define SR1_BUSY 0x1
 
-#define FLASH_READ 0x3
-#define FLASH_READ4 0x13
-#define FLASH_PROGRAM 0x2
+#define FLASH_READ     0x3
+#define FLASH_READ4    0x13
+#define FLASH_PROGRAM  0x2
 #define FLASH_PROGRAM4 0x12
-#define FLASH_ERASE 0xd8
-#define FLASH_ERASE4 0xdc
+#define FLASH_ERASE    0xd8
+#define FLASH_ERASE4   0xdc
 
-#define APP_NAME "QSPI Flasher (commit: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "')"
+#define APP_NAME \
+	"QSPI Flasher (commit: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "')"
 
 enum cmd_ids {
 	CMD_UNKNOWN = 0,
@@ -47,7 +48,6 @@ enum arg_types {
 	ARG_STR,
 	ARG_UINT,
 };
-
 
 bool need_exit;
 struct qspi *qspi;
@@ -159,21 +159,21 @@ void run_bootrom(void)
 	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 	ucg->BP_CTR_REG = 0xffff;
 	delay_loop();
-	REG(SERVICE_URB_PLL) = 0;  // SERVICE PLL to 27 MHz
+	REG(SERVICE_URB_PLL) = 0; // SERVICE PLL to 27 MHz
 	delay_loop();
-	ucg->CTR_REG[0] = 0x402;   // CLK_APB to 27 MHz
-	ucg->CTR_REG[1] = 0x402;   // CLK_CORE to 27 MHz
-	ucg->CTR_REG[2] = 0x402;   // CLK_QSPI0 to 27 MHz
-	ucg->CTR_REG[13] = 0x402;  // CLK_QSPI0_EXT to 27 MHz
+	ucg->CTR_REG[0] = 0x402; // CLK_APB to 27 MHz
+	ucg->CTR_REG[1] = 0x402; // CLK_CORE to 27 MHz
+	ucg->CTR_REG[2] = 0x402; // CLK_QSPI0 to 27 MHz
+	ucg->CTR_REG[13] = 0x402; // CLK_QSPI0_EXT to 27 MHz
 	delay_loop();
 	ucg->BP_CTR_REG = 0;
 	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(0)));
-	ucg->CTR_REG[12] = 0x400;  // CLK_QSPI1 to 27 MHz and disable
+	ucg->CTR_REG[12] = 0x400; // CLK_QSPI1 to 27 MHz and disable
 	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(1)));
-	ucg->CTR_REG[3] = 0x400;   // CLK_QSPI1_EXT to 27 MHz and disable
-	REG(XIP_EN_REQ) = 1;       // QSPI0 to XIP mode
-	REG(HSP_URB_XIP_EN_REQ) = 1;  // QSPI1 from XIP mode
-	bootrom();  // BootROM will reconfigure all registers and never return to SPI Flasher
+	ucg->CTR_REG[3] = 0x400; // CLK_QSPI1_EXT to 27 MHz and disable
+	REG(XIP_EN_REQ) = 1; // QSPI0 to XIP mode
+	REG(HSP_URB_XIP_EN_REQ) = 1; // QSPI1 from XIP mode
+	bootrom(); // BootROM will reconfigure all registers and never return to SPI Flasher
 }
 
 int qspi_prepare(int id, int v18)
@@ -478,7 +478,7 @@ static void iface_read(uint32_t offset, uint32_t size, char *mode)
 			}
 		} else {
 			for (unsigned i = 0; i < len; i++)
-				uart_putc_raw(UART0, buf[i]);  // Do not add \r to \n
+				uart_putc_raw(UART0, buf[i]); // Do not add \r to \n
 		}
 		size -= len;
 		offset += len;
@@ -538,7 +538,7 @@ void iface_execute(char *cmd, char *args[], int argc)
 	struct {
 		char *str;
 		uint32_t uint;
-	} arguments[5] = {0};
+	} arguments[5] = { 0 };
 
 	for (int i = 0; i < ARRAY_LENGTH(commands); i++) {
 		if (!strcmp(commands[i].cmd, cmd)) {
@@ -656,9 +656,9 @@ void iface_process(void)
 		return;
 
 	ch = uart_getchar(UART0);
-	if (ch == 0x1b)  // Ignore Esc key and esc-sequences
+	if (ch == 0x1b) // Ignore Esc key and esc-sequences
 		return;
-	if (ch == 0x7f) {  // Backspace
+	if (ch == 0x7f) { // Backspace
 		if (cmd_line.pos) {
 			cmd_line.line[--cmd_line.pos] = '\0';
 			uart_puts(UART0, "\x1b[1D \x1b[1D");
@@ -684,7 +684,7 @@ void iface_process(void)
 		return;
 	}
 
-	uart_putc(UART0, ch);  // Echo
+	uart_putc(UART0, ch); // Echo
 	cmd_line.line[cmd_line.pos++] = ch;
 	cmd_line.line[cmd_line.pos] = '\0';
 }
@@ -755,8 +755,7 @@ static void restore_clock_settings(struct clock_settings *clock_settings)
 	REG(HSP_URB_PLL) = clock_settings->hsp_pll;
 }
 #else
-struct clock_settings {
-};
+struct clock_settings {};
 
 static void save_clock_settings(struct clock_settings *clock_settings)
 {
@@ -772,13 +771,13 @@ int main(void)
 	struct clock_settings clock_settings;
 	ucg_regs_t *ucg;
 
-	REG(TOP_CLKGATE) |= BIT(4) | BIT(6);  // Enable clock to HSPERIPH and LSPERIPH1
+	REG(TOP_CLKGATE) |= BIT(4) | BIT(6); // Enable clock to HSPERIPH and LSPERIPH1
 
-	REG(LSPERIPH1_SUBS_PPOLICY) = PP_ON;  // Enable LSPERIPH1
+	REG(LSPERIPH1_SUBS_PPOLICY) = PP_ON; // Enable LSPERIPH1
 	while ((REG(LSPERIPH1_SUBS_PSTATUS) & 0x1f) != PP_ON) {
 	}
 
-	REG(HSPERIPH_SUBS_PPOLICY) = PP_ON;  // Enable HSPERIPH
+	REG(HSPERIPH_SUBS_PPOLICY) = PP_ON; // Enable HSPERIPH
 	while ((REG(HSPERIPH_SUBS_PSTATUS) & 0x1f) != PP_ON) {
 	}
 
@@ -788,12 +787,12 @@ int main(void)
 		ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 		ucg->BP_CTR_REG = 0xffff;
 		delay_loop();
-		REG(SERVICE_URB_PLL) = 7;  // SERVICE PLL to 216 MHz
+		REG(SERVICE_URB_PLL) = 7; // SERVICE PLL to 216 MHz
 		delay_loop();
-		ucg->CTR_REG[0] = 0x2302;   // CLK_APB div=8 (27 MHz)
-		ucg->CTR_REG[1] = 0x702;    // CLK_CORE div=1 (216 MHz)
-		ucg->CTR_REG[2] = 0x702;    // CLK_QSPI0 div=1 (216 MHz)
-		ucg->CTR_REG[13] = 0x4302;  // CLK_QSPI0_EXT div=16 (13.5 MHz)
+		ucg->CTR_REG[0] = 0x2302; // CLK_APB div=8 (27 MHz)
+		ucg->CTR_REG[1] = 0x702; // CLK_CORE div=1 (216 MHz)
+		ucg->CTR_REG[2] = 0x702; // CLK_QSPI0 div=1 (216 MHz)
+		ucg->CTR_REG[13] = 0x4302; // CLK_QSPI0_EXT div=16 (13.5 MHz)
 		delay_loop();
 		ucg->BP_CTR_REG = 0;
 	}
@@ -802,7 +801,7 @@ int main(void)
 	REG(HSP_URB_PLL) = 0;
 	REG(LSP1_URB_PLL) = 0;
 
-	REG(HSP_URB_RST) = BIT(2) | BIT(18);  // Assert reset for QSPI1
+	REG(HSP_URB_RST) = BIT(2) | BIT(18); // Assert reset for QSPI1
 
 	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(0)));
 	ucg->CTR_REG[12] = 0xb02;
@@ -815,19 +814,19 @@ int main(void)
 	REG(HSP_URB_QSPI1_SISO_PADCFG) = 0x1fa;
 	REG(HSP_URB_QSPI1_SCLK_PADCFG) = 0x1fa;
 
-	REG(HSP_URB_RST) = BIT(18);  // Deassert reset for QSPI1
+	REG(HSP_URB_RST) = BIT(18); // Deassert reset for QSPI1
 
-	REG(XIP_EN_REQ) = 0;  // Out QSPI0 from XIP mode
-	REG(HSP_URB_XIP_EN_REQ) = 0;  // Out QSPI1 from XIP mode
+	REG(XIP_EN_REQ) = 0; // Out QSPI0 from XIP mode
+	REG(HSP_URB_XIP_EN_REQ) = 0; // Out QSPI1 from XIP mode
 	while (REG(XIP_EN_OUT) || REG(HSP_URB_XIP_EN_OUT)) {
 	}
 
-	REG(LSP1_UCG_CTRL6) = 0x2;  // UART_CLK CLK_EN
+	REG(LSP1_UCG_CTRL6) = 0x2; // UART_CLK CLK_EN
 
 	// Setup UART0 pads
 	REG(LSP1_URB_PAD_CTR(PORTB, 6)) = PAD_CTL_CTL(0x7) | PAD_CTL_SL(0x3);
-	REG(LSP1_URB_PAD_CTR(PORTB, 7)) = PAD_CTL_E | PAD_CTL_CTL(0x7) |
-					  PAD_CTL_SL(0x3) | PAD_CTL_SUS;
+	REG(LSP1_URB_PAD_CTR(PORTB, 7)) = PAD_CTL_E | PAD_CTL_CTL(0x7) | PAD_CTL_SL(0x3) |
+					  PAD_CTL_SUS;
 	// UART0 in hardware mode
 	gpio_set_function_mask(GPIO1, GPIO_BANK_B, BIT(6) | BIT(7), GPIO_FUNC_PERIPH);
 
