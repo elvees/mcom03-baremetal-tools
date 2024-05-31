@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <delay.h>
 #include <gpio.h>
 #include <qspi.h>
 #include <regs.h>
@@ -143,12 +144,6 @@ void __stack_chk_fail(void)
 {
 }
 
-static void delay_loop(void)
-{
-	for (volatile int i = 0; i < 10000; i++) {
-	}
-}
-
 void run_bootrom(void)
 {
 	void (*bootrom)(void) = (void *)0x9fc00000;
@@ -158,14 +153,15 @@ void run_bootrom(void)
 	uart_flush(UART0);
 	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 	ucg->BP_CTR_REG = 0xffff;
-	delay_loop();
+	set_tick_freq(XTI_FREQUENCY);
+	udelay(1);
 	REG(SERVICE_URB_PLL) = 0; // SERVICE PLL to 27 MHz
-	delay_loop();
+	udelay(1);
 	ucg->CTR_REG[0] = 0x402; // CLK_APB to 27 MHz
 	ucg->CTR_REG[1] = 0x402; // CLK_CORE to 27 MHz
 	ucg->CTR_REG[2] = 0x402; // CLK_QSPI0 to 27 MHz
 	ucg->CTR_REG[13] = 0x402; // CLK_QSPI0_EXT to 27 MHz
-	delay_loop();
+	udelay(1);
 	ucg->BP_CTR_REG = 0;
 	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(0)));
 	ucg->CTR_REG[12] = 0x400; // CLK_QSPI1 to 27 MHz and disable
@@ -730,26 +726,29 @@ static void restore_clock_settings(struct clock_settings *clock_settings)
 	if (clock_settings->is_service_changed) {
 		ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 		ucg->BP_CTR_REG = 0xffff;
-		delay_loop();
+		/* set_tick_freq() is not required here because this code is under CAN_RETURN ifdef.
+		 * CAN_RETURN used only for ARM processor that ignores set_tick_freq() (for ARM
+		 * fixed timer frequency is used) */
+		udelay(1);
 		REG(SERVICE_URB_PLL) = clock_settings->service_pll;
-		delay_loop();
+		udelay(1);
 		ucg->CTR_REG[0] = clock_settings->service_ucg_apb;
 		ucg->CTR_REG[1] = clock_settings->service_ucg_core;
 		ucg->CTR_REG[2] = clock_settings->service_ucg_qspi0;
 		ucg->CTR_REG[13] = clock_settings->service_ucg_qspi0_ext;
-		delay_loop();
+		udelay(1);
 		ucg->BP_CTR_REG = 0;
 	}
 	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(0)));
 	ucg->BP_CTR_REG |= BIT(12);
 	ucg->CTR_REG[12] = clock_settings->hsp_ucg_qspi1;
-	delay_loop();
+	udelay(1);
 	ucg->BP_CTR_REG &= ~BIT(12);
 
 	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(1)));
 	ucg->BP_CTR_REG |= BIT(3);
 	ucg->CTR_REG[3] = clock_settings->hsp_ucg_qspi1_ext;
-	delay_loop();
+	udelay(1);
 	ucg->BP_CTR_REG &= ~BIT(3);
 
 	REG(HSP_URB_PLL) = clock_settings->hsp_pll;
@@ -786,14 +785,14 @@ int main(void)
 		// Setup SERVICE clocks as in UART boot mode
 		ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 		ucg->BP_CTR_REG = 0xffff;
-		delay_loop();
+		udelay(1);
 		REG(SERVICE_URB_PLL) = 7; // SERVICE PLL to 216 MHz
-		delay_loop();
+		udelay(1);
 		ucg->CTR_REG[0] = 0x2302; // CLK_APB div=8 (27 MHz)
 		ucg->CTR_REG[1] = 0x702; // CLK_CORE div=1 (216 MHz)
 		ucg->CTR_REG[2] = 0x702; // CLK_QSPI0 div=1 (216 MHz)
 		ucg->CTR_REG[13] = 0x4302; // CLK_QSPI0_EXT div=16 (13.5 MHz)
-		delay_loop();
+		udelay(1);
 		ucg->BP_CTR_REG = 0;
 	}
 
