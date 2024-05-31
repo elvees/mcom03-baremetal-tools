@@ -7,6 +7,7 @@
 
 #include <delay.h>
 #include <gpio.h>
+#include <i2c.h>
 #include <qspi.h>
 #include <regs.h>
 #include <uart.h>
@@ -32,6 +33,8 @@
 #define APP_NAME \
 	"QSPI Flasher (commit: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "')"
 
+#define I2C_BUFFER_SIZE 256
+
 enum cmd_ids {
 	CMD_UNKNOWN = 0,
 	CMD_HELP,
@@ -43,6 +46,9 @@ enum cmd_ids {
 	CMD_CUSTOM,
 	CMD_BOOTROM,
 	CMD_EXIT,
+	CMD_I2C_DEV,
+	CMD_I2C_READ,
+	CMD_I2C_WRITE,
 };
 
 enum arg_types {
@@ -52,10 +58,13 @@ enum arg_types {
 
 bool need_exit;
 struct qspi *qspi;
+struct i2c *i2c;
+
 struct {
 	char line[64];
 	unsigned pos;
 } cmd_line;
+
 const struct {
 	enum cmd_ids cmd_id;
 	char *cmd;
@@ -137,6 +146,31 @@ const struct {
 		.arg_max = 0,
 	},
 #endif
+	{
+		.cmd_id = CMD_I2C_DEV,
+		.cmd = "i2c_dev",
+		.help = "Select and prepare I2C controller: "
+			"i2c_dev <ctrl_id> <speed> (0 - std, 1 - fast)",
+		.arg_min = 2,
+		.arg_max = 2,
+		.arg_types = { ARG_UINT, ARG_UINT },
+	},
+	{
+		.cmd_id = CMD_I2C_READ,
+		.cmd = "i2c_read",
+		.help = "Read data from i2c device: i2c_read <addr> <regaddr> <alen> <size> [text|bin]",
+		.arg_min = 4,
+		.arg_max = 5,
+		.arg_types = { ARG_UINT, ARG_UINT, ARG_UINT, ARG_UINT, ARG_STR },
+	},
+	{
+		.cmd_id = CMD_I2C_WRITE,
+		.cmd = "i2c_write",
+		.help = "Write data to i2c device: i2c_write <addr> <regaddr> <alen> <size>",
+		.arg_min = 4,
+		.arg_max = 4,
+		.arg_types = { ARG_UINT, ARG_UINT, ARG_UINT, ARG_UINT },
+	},
 };
 
 unsigned long __stack_chk_guard;
@@ -535,6 +569,84 @@ static uint32_t str2uint(char *s, bool *ok)
 	return value;
 }
 
+void cmd_i2c_dev(uint32_t ctrl_id, uint32_t speed)
+{
+	switch (ctrl_id) {
+	case 0:
+		i2c = I2C0;
+		break;
+	case 1:
+		i2c = I2C1;
+		break;
+	case 2:
+		i2c = I2C2;
+		break;
+	case 3:
+		i2c = I2C3;
+		break;
+	case 4:
+		i2c = I2C4;
+		break;
+	default:
+		uart_printf(UART0, "Error: wrong ctrl_id %d\n", ctrl_id);
+		return;
+	}
+
+	if (speed == 0)
+		speed = I2C_STANDARD_SPEED;
+	else if (speed == 1)
+		speed = I2C_FAST_SPEED;
+
+	i2c_init(i2c, speed, XTI_FREQUENCY);
+	i2c_pads_cfg(ctrl_id);
+}
+
+void cmd_i2c_read(uint32_t addr, uint32_t regaddr, uint32_t alen, uint32_t size, char *mode)
+{
+	uint8_t buf[I2C_BUFFER_SIZE];
+
+	if (size >= I2C_BUFFER_SIZE)
+		size = I2C_BUFFER_SIZE;
+
+	if (!i2c_read(i2c, addr, regaddr, alen, buf, size)) {
+		uart_puts(UART0, "Error\n");
+		return;
+	}
+
+	if (!mode || !strcmp(mode, "text")) {
+		print_hexdump_header(regaddr);
+		print_hexdump_body(buf, regaddr, size);
+	} else if (!strcmp(mode, "bin")) {
+		uart_putc(UART0, '#');
+		for (uint32_t i = 0; i < size; i++)
+			uart_putc_raw(UART0, buf[i]); // Do not add \r to \n
+	}
+}
+
+void cmd_i2c_write(uint32_t addr, uint32_t regaddr, uint32_t alen, uint32_t size)
+{
+	uint8_t buf[I2C_BUFFER_SIZE];
+
+	uart_puts(UART0, "Ready for data\n#");
+	if (size > I2C_BUFFER_SIZE) {
+		uart_puts(UART0, "Error: Structure size is too large\n");
+		return;
+	}
+
+	if (size >= I2C_BUFFER_SIZE)
+		size = I2C_BUFFER_SIZE;
+
+	for (uint32_t i = 0; i < size; i++)
+		buf[i] = uart_getchar(UART0);
+
+	if (!i2c_write(i2c, addr, regaddr, alen, buf, size)) {
+		uart_puts(UART0, "Error\n");
+		return;
+	}
+
+	uart_puts(UART0, "Done\n");
+}
+
 void iface_execute(char *cmd, char *args[], int argc)
 {
 	enum cmd_ids cmd_id = CMD_UNKNOWN;
@@ -615,6 +727,17 @@ void iface_execute(char *cmd, char *args[], int argc)
 		need_exit = true;
 		break;
 #endif
+	case CMD_I2C_DEV:
+		cmd_i2c_dev(arguments[0].uint, arguments[1].uint);
+		break;
+	case CMD_I2C_READ:
+		cmd_i2c_read(arguments[0].uint, arguments[1].uint, arguments[2].uint,
+			     arguments[3].uint, arguments[4].str);
+		break;
+	case CMD_I2C_WRITE:
+		cmd_i2c_write(arguments[0].uint, arguments[1].uint, arguments[2].uint,
+			      arguments[3].uint);
+		break;
 	default:
 		break;
 	}
@@ -777,43 +900,60 @@ int main(void)
 	struct clock_settings clock_settings;
 	ucg_regs_t *ucg;
 
-	REG(TOP_CLKGATE) |= BIT(4) | BIT(6); // Enable clock to HSPERIPH and LSPERIPH1
-
-	REG(LSPERIPH1_SUBS_PPOLICY) = PP_ON; // Enable LSPERIPH1
-	while ((REG(LSPERIPH1_SUBS_PSTATUS) & 0x1f) != PP_ON) {
-	}
+	// Enable clock to HSPERIPH, LSPERIPH0 and LSPERIPH1
+	REG(TOP_CLKGATE) |= BIT(4) | BIT(5) | BIT(6);
 
 	REG(HSPERIPH_SUBS_PPOLICY) = PP_ON; // Enable HSPERIPH
-	while ((REG(HSPERIPH_SUBS_PSTATUS) & 0x1f) != PP_ON) {
-	}
+	while ((REG(HSPERIPH_SUBS_PSTATUS) & 0x1f) != PP_ON)
+		continue;
+
+	REG(LSPERIPH0_SUBS_PPOLICY) = PP_ON; // Enable LSPERIPH0
+	while ((REG(LSPERIPH0_SUBS_PSTATUS) & 0x1f) != PP_ON)
+		continue;
+
+	REG(LSPERIPH1_SUBS_PPOLICY) = PP_ON; // Enable LSPERIPH1
+	while ((REG(LSPERIPH1_SUBS_PSTATUS) & 0x1f) != PP_ON)
+		continue;
 
 	save_clock_settings(&clock_settings);
+
+	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
+	ucg->BP_CTR_REG = 0xffff;
+	udelay(1);
+
 	if ((REG(SERVICE_URB_PLL) & 0xff) != 7) {
 		// Setup SERVICE clocks as in UART boot mode
-		ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
-		ucg->BP_CTR_REG = 0xffff;
-		udelay(1);
 		REG(SERVICE_URB_PLL) = 7; // SERVICE PLL to 216 MHz
 		udelay(1);
-		ucg->CTR_REG[0] = 0x2302; // CLK_APB div=8 (27 MHz)
-		ucg->CTR_REG[1] = 0x702; // CLK_CORE div=1 (216 MHz)
-		ucg->CTR_REG[2] = 0x702; // CLK_QSPI0 div=1 (216 MHz)
-		ucg->CTR_REG[13] = 0x4302; // CLK_QSPI0_EXT div=16 (13.5 MHz)
-		udelay(1);
-		ucg->BP_CTR_REG = 0;
+		ucg->CTR_REG[0] = 0x2 | (8 << 10); // CLK_APB div=8 (27 MHz)
+		ucg->CTR_REG[1] = 0x2 | (1 << 10); // CLK_CORE div=1 (216 MHz)
+		ucg->CTR_REG[2] = 0x2 | (1 << 10); // CLK_QSPI0 div=1 (216 MHz)
+		ucg->CTR_REG[4] = 0x2 | (1 << 10); // CLK_RISC0 div=1 (216 MHz)
+		ucg->CTR_REG[13] = 0x2 | (16 << 10); // CLK_QSPI0_EXT div=16 (13.5 MHz)
 	}
+
+	// I2C4 clocks are disabled even in UART boot mode
+	ucg->CTR_REG[9] = 0x2 | (8 << 10); // CLK_I2C4 div=8 (27 MHz)
+	ucg->CTR_REG[12] = 0x2 | (8 << 10); // CLK_I2C4_EXT div=8 (27 MHz)
+	udelay(1);
+	ucg->SYNC_CLK_REG = 0xfff;
+	ucg->BP_CTR_REG = 0;
+
+	// For MIPS timer uses RISC0 frequency. For ARM this function ignored.
+	set_tick_freq(XTI_FREQUENCY * 8);
 
 	// Turn PLLs to bypass mode
 	REG(HSP_URB_PLL) = 0;
+	REG(LSP0_URB_PLL) = 0;
 	REG(LSP1_URB_PLL) = 0;
 
 	REG(HSP_URB_RST) = BIT(2) | BIT(18); // Assert reset for QSPI1
 
 	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(0)));
-	ucg->CTR_REG[12] = 0xb02;
+	ucg->CTR_REG[12] = 0x2 | (2 << 10); // CLK_QSPI1 div=2 (13.5 MHz)
 
 	ucg = (ucg_regs_t *)(TO_VIRT(HSP_UCG(1)));
-	ucg->CTR_REG[3] = 0x702;
+	ucg->CTR_REG[3] = 0x2 | (1 << 10); // CLK_QSPI1_EXT div=1 (27 MHz)
 
 	REG(HSP_URB_QSPI1_PADCFG) = 0x1;
 	REG(HSP_URB_QSPI1_SS_PADCFG) = 0x1fa;
@@ -824,10 +964,16 @@ int main(void)
 
 	REG(XIP_EN_REQ) = 0; // Out QSPI0 from XIP mode
 	REG(HSP_URB_XIP_EN_REQ) = 0; // Out QSPI1 from XIP mode
-	while (REG(XIP_EN_OUT) || REG(HSP_URB_XIP_EN_OUT)) {
-	}
+	while (REG(XIP_EN_OUT) || REG(HSP_URB_XIP_EN_OUT))
+		continue;
 
-	REG(LSP1_UCG_CTRL6) = 0x2; // UART_CLK CLK_EN
+	ucg = (ucg_regs_t *)(TO_VIRT(LSP0_UCG2));
+	ucg->CTR_REG[5] = 0x2 | (1 << 10); // I2C0_CLK div=1 (27 MHz)
+	ucg = (ucg_regs_t *)(TO_VIRT(LSP1_UCG));
+	ucg->CTR_REG[1] = 0x2 | (1 << 10); // I2C1_CLK div=1 (27 MHz)
+	ucg->CTR_REG[2] = 0x2 | (1 << 10); // I2C2_CLK div=1 (27 MHz)
+	ucg->CTR_REG[3] = 0x2 | (1 << 10); // I2C3_CLK div=1 (27 MHz)
+	ucg->CTR_REG[6] = 0x2 | (1 << 10); // UART_CLK div=1 (27 MHz)
 
 	// Setup UART0 pads
 	REG(LSP1_URB_PAD_CTR(PORTB, 6)) = PAD_CTL_CTL(0x7) | PAD_CTL_SL(0x3);
@@ -839,7 +985,9 @@ int main(void)
 	uart_flush(UART0);
 	uart_init(UART0, XTI_FREQUENCY, 115200);
 	qspi_prepare(0, 1);
+	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 	uart_printf(UART0, "%s\n#", APP_NAME);
+
 	while (!need_exit) {
 		iface_process();
 	}

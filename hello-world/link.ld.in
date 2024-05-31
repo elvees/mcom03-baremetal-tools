@@ -29,8 +29,9 @@ SECTIONS
     __data_start = ABSOLUTE(.);
     *(.data)
     *(.data.*)
+    *(.gnu.*)
     . = ALIGN(4);
-    _gp = ABSOLUTE(. + 0x7ff0);  /* Base of small data (for MIPS) */
+    _gp = ABSOLUTE(.);  /* Base of small data (for MIPS) */
     *(.sdata)
     *(.sdata.*)
     . = ALIGN(4);
