@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <console.h>
 #include <delay.h>
 #include <gpio.h>
 #include <i2c.h>
@@ -36,7 +37,6 @@
 #define I2C_BUFFER_SIZE 256
 
 enum cmd_ids {
-	CMD_UNKNOWN = 0,
 	CMD_HELP,
 	CMD_QSPI,
 	CMD_ERASE,
@@ -51,28 +51,10 @@ enum cmd_ids {
 	CMD_I2C_WRITE,
 };
 
-enum arg_types {
-	ARG_STR,
-	ARG_UINT,
-};
-
 bool need_exit;
 struct qspi *qspi;
 struct i2c *i2c;
-
-struct {
-	char line[64];
-	unsigned pos;
-} cmd_line;
-
-const struct {
-	enum cmd_ids cmd_id;
-	char *cmd;
-	char *help;
-	int arg_min;
-	int arg_max;
-	enum arg_types arg_types[5];
-} commands[] = {
+struct console_cmd console_cmd[] = {
 	{
 		.cmd_id = CMD_HELP,
 		.cmd = "help",
@@ -532,43 +514,6 @@ static void iface_read(uint32_t offset, uint32_t size, char *mode)
 	}
 }
 
-static uint32_t str2uint(char *s, bool *ok)
-{
-	uint32_t value = 0;
-	uint32_t val_char;
-
-	if (s[0] == '0' && s[1] == 'x') {
-		s = s + 2;
-		while (*s) {
-			value <<= 4;
-			val_char = hexchar2uint(*s);
-			if (val_char == (uint32_t)-1) {
-				if (ok)
-					*ok = false;
-				return 0;
-			}
-			value |= val_char;
-			s++;
-		}
-	} else {
-		while (*s) {
-			value *= 10;
-			if (*s >= '0' && *s <= '9')
-				value += *s - '0';
-			else {
-				if (ok)
-					*ok = false;
-				return 0;
-			}
-			s++;
-		}
-	}
-	if (ok)
-		*ok = true;
-
-	return value;
-}
-
 void cmd_i2c_dev(uint32_t ctrl_id, uint32_t speed)
 {
 	switch (ctrl_id) {
@@ -647,75 +592,41 @@ void cmd_i2c_write(uint32_t addr, uint32_t regaddr, uint32_t alen, uint32_t size
 	uart_puts(UART0, "Done\n");
 }
 
-void iface_execute(char *cmd, char *args[], int argc)
+void console_run(struct console *console, struct console_cmd *cmd, struct console_arg *args,
+		 int argc)
 {
-	enum cmd_ids cmd_id = CMD_UNKNOWN;
-	struct {
-		char *str;
-		uint32_t uint;
-	} arguments[5] = { 0 };
-
-	for (int i = 0; i < ARRAY_LENGTH(commands); i++) {
-		if (!strcmp(commands[i].cmd, cmd)) {
-			cmd_id = commands[i].cmd_id;
-			if (argc < commands[i].arg_min || argc > commands[i].arg_max) {
-				uart_puts(UART0, "Error: Wrong arguments count\n");
-				return;
-			}
-			for (int j = 0; j < argc; j++) {
-				bool ok;
-				arguments[j].str = args[j];
-				if (commands[i].arg_types[j] == ARG_UINT) {
-					arguments[j].uint = str2uint(args[j], &ok);
-					if (!ok) {
-						uart_printf(UART0,
-							    "Error: Argument %d must be integer\n",
-							    j);
-						return;
-					}
-				} else
-					arguments[j].uint = 0;
-			}
-		}
-	}
-	if (cmd_id == CMD_UNKNOWN) {
-		uart_puts(UART0, "Error: Unknown command\n");
-		return;
-	}
-
-	switch (cmd_id) {
+	switch (cmd->cmd_id) {
 	case CMD_HELP:
-		for (int i = 0; i < ARRAY_LENGTH(commands); i++)
-			uart_printf(UART0, "%s    - %s\n", commands[i].cmd, commands[i].help);
+		console_help(console);
 		break;
 	case CMD_QSPI:
-		if (qspi_prepare(arguments[0].uint, arguments[1].uint))
+		if (qspi_prepare(args[0].uint, args[1].uint))
 			uart_puts(UART0, "Error: Init error\n");
 		else
-			uart_printf(UART0, "Selected QSPI%u, padcfg v18 = %u\n", arguments[0].uint,
-				    !!arguments[1].uint);
+			uart_printf(UART0, "Selected QSPI%u, padcfg v18 = %u\n", args[0].uint,
+				    !!args[1].uint);
 		break;
 	case CMD_ERASE:
 		qspi_flash_write_enable();
-		qspi_flash_erase(arguments[0].uint);
+		qspi_flash_erase(args[0].uint);
 		uart_puts(UART0, "OK\n");
 		break;
 	case CMD_WRITE:
-		if (arguments[1].uint == 0 || arguments[1].uint > 32 * 1024) {
+		if (args[1].uint == 0 || args[1].uint > 32 * 1024) {
 			uart_puts(UART0, "E\nWrong page size. Must be 0 < page <= 32768\n");
 			break;
 		}
 		uart_puts(UART0, "Ready for data\n#");
-		iface_write_data(arguments[0].uint, arguments[1].uint);
+		iface_write_data(args[0].uint, args[1].uint);
 		break;
 	case CMD_READ:
-		iface_read(arguments[0].uint, arguments[1].uint, arguments[2].str);
+		iface_read(args[0].uint, args[1].uint, args[2].str);
 		break;
 	case CMD_READ_CRC:
-		uart_printf(UART0, "%#x\n", iface_read_crc(arguments[0].uint, arguments[1].uint));
+		uart_printf(UART0, "%#x\n", iface_read_crc(args[0].uint, args[1].uint));
 		break;
 	case CMD_CUSTOM:
-		iface_custom(arguments[0].str, arguments[1].uint);
+		iface_custom(args[0].str, args[1].uint);
 		break;
 #ifdef MIPS32
 	case CMD_BOOTROM:
@@ -728,92 +639,28 @@ void iface_execute(char *cmd, char *args[], int argc)
 		break;
 #endif
 	case CMD_I2C_DEV:
-		cmd_i2c_dev(arguments[0].uint, arguments[1].uint);
+		cmd_i2c_dev(args[0].uint, args[1].uint);
 		break;
 	case CMD_I2C_READ:
-		cmd_i2c_read(arguments[0].uint, arguments[1].uint, arguments[2].uint,
-			     arguments[3].uint, arguments[4].str);
+		cmd_i2c_read(args[0].uint, args[1].uint, args[2].uint, args[3].uint, args[4].str);
 		break;
 	case CMD_I2C_WRITE:
-		cmd_i2c_write(arguments[0].uint, arguments[1].uint, arguments[2].uint,
-			      arguments[3].uint);
+		cmd_i2c_write(args[0].uint, args[1].uint, args[2].uint, args[3].uint);
 		break;
 	default:
 		break;
 	}
 }
 
-void iface_parse_cmd_line(void)
-{
-	char *args[5];
-	int argc = 0;
-	bool last_space = false;
-
-	for (int i = 0; i < cmd_line.pos; i++) {
-		if (cmd_line.line[i] == ' ') {
-			if (!last_space)
-				cmd_line.line[i] = '\0';
-			last_space = true;
-		} else {
-			if (last_space) {
-				if (argc >= 5) {
-					uart_puts(UART0, "Error: Too many arguments\n");
-					return;
-				}
-				args[argc++] = &cmd_line.line[i];
-				last_space = false;
-			}
-		}
-	}
-	if (cmd_line.line[0] == '\0') {
-		uart_puts(UART0, APP_NAME);
-		uart_putc(UART0, '\n');
-		return;
-	}
-
-	iface_execute(cmd_line.line, args, argc);
-}
-
-void iface_process(void)
-{
-	uint8_t ch;
-
-	if (!uart_is_char_ready(UART0))
-		return;
-
-	ch = uart_getchar(UART0);
-	if (ch == 0x1b) // Ignore Esc key and esc-sequences
-		return;
-	if (ch == 0x7f) { // Backspace
-		if (cmd_line.pos) {
-			cmd_line.line[--cmd_line.pos] = '\0';
-			uart_puts(UART0, "\x1b[1D \x1b[1D");
-		}
-		return;
-	}
-	if (cmd_line.pos >= sizeof(cmd_line.line) - 2) {
-		cmd_line.pos = 0;
-		cmd_line.line[0] = '\0';
-		uart_puts(UART0, "\nError: commmand is too large\n#");
-		return;
-	}
-
-	if (ch == '\n')
-		return;
-
-	if (ch == '\r') {
-		uart_putc(UART0, '\n');
-		iface_parse_cmd_line();
-		uart_putc(UART0, '#');
-		cmd_line.pos = 0;
-		cmd_line.line[0] = '\0';
-		return;
-	}
-
-	uart_putc(UART0, ch); // Echo
-	cmd_line.line[cmd_line.pos++] = ch;
-	cmd_line.line[cmd_line.pos] = '\0';
-}
+struct console console = {
+	.uart = UART0,
+	.cmds = console_cmd,
+	.cmds_count = ARRAY_LENGTH(console_cmd),
+	.prompt = "#",
+	.app_name = APP_NAME,
+	.each_line_msg = APP_NAME,
+	.run_cmd = console_run,
+};
 
 #ifdef CAN_RETURN
 struct clock_settings {
@@ -989,7 +836,7 @@ int main(void)
 	uart_printf(UART0, "%s\n#", APP_NAME);
 
 	while (!need_exit) {
-		iface_process();
+		console_process(&console);
 	}
 	restore_clock_settings(&clock_settings);
 #ifdef CAN_RETURN
