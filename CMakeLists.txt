@@ -35,4 +35,5 @@ else()
 endif()
 
 add_subdirectory(hello-world)
+add_subdirectory(pvt-demo)
 add_subdirectory(spi-flasher)
