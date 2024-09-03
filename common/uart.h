@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#include <regs.h>
+
 #define UART0 ((struct uart *)(TO_VIRT(UART0_BASE)))
 #define UART1 ((struct uart *)(TO_VIRT(UART1_BASE)))
 #define UART2 ((struct uart *)(TO_VIRT(UART2_BASE)))
