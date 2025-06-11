@@ -39,5 +39,6 @@
 #define gpio_set_function(g, b, pin, func) gpio_set_function_mask(g, b, BIT(pin), func)
 #define gpio_set_direction(g, b, pin, dir) gpio_set_direction_mask(g, b, BIT(pin), dir)
 #define gpio_set_value(g, b, pin, val)	   gpio_set_value_mask(g, b, BIT(pin), (!!(val)) << pin)
+#define gpio_get_value(g, b, pin)	   ((REG((g) + (b)) >> pin) & 0x1)
 
 #endif
