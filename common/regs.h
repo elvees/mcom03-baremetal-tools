@@ -134,9 +134,10 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define UCG_CTR_CLK_EN BIT(1)
 
 #define LSP1_URB_PLL		      LSP1_URB
-#define LSP1_URB_PAD_CTR(port, num)   (LSP1_URB + 0x20 + ((port) * 0x20) + ((num) * 0x4))
 #define LSP1_URB_I2S_UCG_RSTN_PPOLICY (LSP1_URB + 0x8)
 #define LSP1_URB_I2S_UCG_RSTN_PSTATUS (LSP1_URB + 0xc)
+#define LSP1_URB_PAD_CTR(port, num)   (LSP1_URB + 0x20 + ((port) * 0x20) + ((num) * 0x4))
+#define LSP1_URB_GPIO1_V18	      (LSP1_URB + 0xa0)
 
 #define PORTA	       0
 #define PORTB	       1

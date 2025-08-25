@@ -36,4 +36,5 @@ endif()
 
 add_subdirectory(hello-world)
 add_subdirectory(pvt-demo)
+add_subdirectory(soak-test)
 add_subdirectory(spi-flasher)
