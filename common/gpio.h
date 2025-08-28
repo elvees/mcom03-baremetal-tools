@@ -31,9 +31,9 @@
 #define gpio_set_function_mask(g, b, mask, func) \
 	_gpio_set_mask(g, b, 0x8, mask, func, GPIO_FUNC_GPIO)
 #define gpio_set_direction_mask(g, b, mask, dir) _gpio_set_mask(g, b, 0x4, mask, dir, GPIO_DIR_IN)
-#define gpio_set_value_mask(g, b, mask, val_mask)                         \
-	{                                                                 \
-		REG((g) + (b)) = (REG((g) + (b)) & ~(mask)) | (val_mask); \
+#define gpio_set_value_mask(g, b, mask, val_mask)                                \
+	{                                                                        \
+		REG((g) + (b)) = (REG((g) + (b)) & ~(mask)) | (val_mask & mask); \
 	}
 
 #define gpio_set_function(g, b, pin, func) gpio_set_function_mask(g, b, BIT(pin), func)
