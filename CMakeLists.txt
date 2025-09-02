@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 project(BaremetalTools ASM C)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the build type" FORCE)
+endif()
+
 set(XTI_FREQUENCY 27000000 CACHE STRING "MCom-03 input frequency")
 execute_process(COMMAND git describe --match=NeVeRmAtCh --always --abbrev=7 --dirty
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" OUTPUT_VARIABLE GIT_SHA1_SHORT

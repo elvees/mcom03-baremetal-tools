@@ -2,10 +2,6 @@ cmake_minimum_required(VERSION 3.15)
 
 project(Hello_World ASM C)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the build type" FORCE)
-endif()
-
 include_directories(../common)
 
 set(REGIONS xip${XIP_NOM} ram)
