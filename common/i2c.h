@@ -99,7 +99,7 @@ void i2c_pads_cfg(uint32_t i2c_num);
  * buf - buffer to place data
  * size - size of data to read
  *
- * Example of read from EEPROM with bus addres 0x50 with 2-byte address (alen=2, regaddr=0x123)
+ * Example of read from EEPROM with bus address 0x50 with 2-byte address (alen=2, regaddr=0x123)
  * <START> <addr+rd_bit> <regaddr_hi> <regaddr_lo> <RESTART> (read data)..... <STOP>
  * <START> <10100001> <0x01> <0x23> <RESTART> ..... <STOP> */
 bool i2c_read(struct i2c *i2c, uint32_t addr, uint32_t regaddr, uint32_t alen, uint8_t *buf,

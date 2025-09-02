@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright 2021-2024 RnD Center "ELVEES", JSC
+// Copyright 2021-2025 RnD Center "ELVEES", JSC
 
 #ifndef REGS_H_
 #define REGS_H_
@@ -73,10 +73,11 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define DDR_SUBS_PPOLICY 0x1f000038
 #define DDR_SUBS_PSTATUS 0x1f00003c
 
-#define TOP_CLKGATE 0x1f001008
-#define XIP_EN_REQ  0x1f002004
-#define XIP_EN_OUT  0x1f002008
-#define QSPI0_BASE  0x1ff00000
+#define TOP_CLKGATE  0x1f001008
+#define XIP_EN_REQ   0x1f002004
+#define XIP_EN_OUT   0x1f002008
+#define SPI_OTP_BASE 0x1f040000
+#define QSPI0_BASE   0x1ff00000
 
 #define PP_ON	    0x10
 #define PP_WARM_RST 0x8
@@ -86,11 +87,14 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define CPU_URB_PLL (CPU_URB + 0x50)
 #define CPU_UCG	    0x1080000
 
-#define SERVICE_BASE	   0x1f000000
-#define SERVICE_URB	   SERVICE_BASE
-#define SERVICE_UCG	   (SERVICE_BASE + 0x20000)
-#define SERVICE_URB_PLL	   (SERVICE_URB + 0x1000)
-#define SERVICE_RISC0_VMMU (SERVICE_BASE + 0xd04000)
+#define SERVICE_BASE	    0x1f000000
+#define SERVICE_URB	    SERVICE_BASE
+#define SEVICE_URB_OTP_MODE (SERVICE_URB + 0x3008)
+#define SEVICE_URB_OTP_FLAG (SERVICE_URB + 0x300C)
+#define SEVICE_URB_OTP_ECC  (SERVICE_URB + 0x3018)
+#define SERVICE_UCG	    (SERVICE_BASE + 0x20000)
+#define SERVICE_URB_PLL	    (SERVICE_URB + 0x1000)
+#define SERVICE_RISC0_VMMU  (SERVICE_BASE + 0xd04000)
 
 #define I2C4_BASE    (SERVICE_BASE + 0x90000)
 #define LSP0_BASE    0x01600000

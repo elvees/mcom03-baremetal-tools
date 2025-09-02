@@ -118,7 +118,7 @@ bool i2c_read(struct i2c *i2c, uint32_t addr, uint32_t regaddr, uint32_t alen, u
 {
 	unsigned long tick_start;
 	uint32_t requested = 0;
-	uint32_t readed = 0;
+	uint32_t bytes_read = 0;
 	bool ret = true;
 
 	i2c->TAR = addr;
@@ -131,15 +131,15 @@ bool i2c_read(struct i2c *i2c, uint32_t addr, uint32_t regaddr, uint32_t alen, u
 
 	tick_start = get_tick_counter();
 
-	while (readed < size) {
+	while (bytes_read < size) {
 		if (requested < size && (i2c->STATUS & I2C_STATUS_TX_NOT_FULL)) {
 			requested++;
 			i2c->DATA_CMD = (requested == size) ? (I2C_CMD_READ | I2C_CMD_STOP) :
 							      I2C_CMD_READ;
 		}
 		if (i2c->STATUS & I2C_STATUS_RX_NOT_EMPTY) {
-			buf[readed] = i2c->DATA_CMD & 0xFF;
-			readed++;
+			buf[bytes_read] = i2c->DATA_CMD & 0xFF;
+			bytes_read++;
 			tick_start = get_tick_counter(); // Clear timeout counter
 		}
 		if (ticks_to_us(ticks_since(tick_start)) > 10000) {

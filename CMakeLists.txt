@@ -31,6 +31,7 @@ else()
     set(XIP_NOM "0")
     set(CONFIG_ARCH "mips")
     set(RAM_ADDR "0x80000000")
+    add_subdirectory(otp-flasher)
 endif()
 
 add_subdirectory(hello-world)

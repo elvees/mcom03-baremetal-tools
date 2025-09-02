@@ -81,7 +81,7 @@ struct console_cmd console_cmd[] = {
 	{
 		.cmd_id = CMD_WRITE,
 		.cmd = "write",
-		.help = "turn to write mode (requred binary data) : write <offset> <page_size>",
+		.help = "turn to write mode (required binary data) : write <offset> <page_size>",
 		.arg_min = 2,
 		.arg_max = 2,
 		.arg_types = { ARG_UINT, ARG_UINT },
