@@ -2,6 +2,8 @@
 // Copyright 2024 RnD Center "ELVEES", JSC
 
 #include <stdint.h>
+#include <delay.h>
+#include <regs.h>
 
 #ifdef MIPS32
 static unsigned long tick_freq = XTI_FREQUENCY;
@@ -110,4 +112,11 @@ void mdelay(uint32_t ms)
 uint32_t ticks_to_us(unsigned long ticks)
 {
 	return ticks / (_get_tick_freq() / 1000000);
+}
+
+int poll_read32_mask_timeout(uintptr_t reg_addr, uint32_t mask, uint32_t value, unsigned long timeout_us)
+{
+	uint32_t val;
+
+	return poll_timeout(REG(reg_addr), val, (val & mask) == value, 0, timeout_us);
 }

@@ -24,6 +24,10 @@
 		(cond) ? 0 : -1;                                                       \
 	})
 
+// Poll register reg_addr and wait until bits of mask will be equal to value
+// Use function instead of poll_timeout allow to reduce binary size if used several times in code
+int poll_read32_mask_timeout(uintptr_t reg_addr, uint32_t mask, uint32_t value, unsigned long timeout_us);
+
 // Set new frequency for CPU ticks counter. Used only for MIPS CPU
 void set_tick_freq(unsigned long freq);
 

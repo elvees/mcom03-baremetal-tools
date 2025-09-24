@@ -36,7 +36,13 @@ struct ucg {
 #define UCG_DDR_UCG0	      ((struct ucg *)(TO_VIRT(DDR_UCG0)))
 #define UCG_DDR_UCG1	      ((struct ucg *)(TO_VIRT(DDR_UCG1)))
 
-#define UCG_CLK_EN BIT(1)
+#define UCG_LPI_EN	   BIT(0)
+#define UCG_CLK_EN	   BIT(1)
+#define UCG_CLK_EN_STS	   GENMASK(4, 2)
+#define UCG_QACTIVE_CTL_EN BIT(6)
+#define UCG_Q_FSM_STATE	   GENMASK(9, 7)
+#define UCG_DIV_COEFF	   GENMASK(29, 10)
+#define UCG_DIV_LOCK	   BIT(30)
 
 #define ucg_chan_is_enabled(ucg, chan) (!!((ucg)->CTR[chan] & UCG_CLK_EN))
 
@@ -61,5 +67,12 @@ struct ucg {
 #define set_pll_man(pll_addr, nr, nf, od)                                             \
 	REG(pll_addr) = FIELD_PREP(PLL_NR, (nr) - 1) | FIELD_PREP(PLL_NF, (nf) - 1) | \
 			FIELD_PREP(PLL_OD, (od) - 1) | PLL_MAN | FIELD_PREP(PLL_SEL, 1)
+
+unsigned long clk_pll_calc_freq(uint32_t pll_value, uint32_t xti_freq);
+int clk_pll_set_value(uintptr_t pll, uint32_t value);
+void clk_ucg_bypass_enabled_channels(struct ucg *ucg, int count);
+int clk_ucg_set_div(struct ucg *ucg, unsigned int channel, uint32_t div);
+int clk_ucg_setup(struct ucg *ucg, const uint32_t *divs, int count, uint32_t sync_mask,
+		  uintptr_t pll, uint32_t pll_value);
 
 #endif
