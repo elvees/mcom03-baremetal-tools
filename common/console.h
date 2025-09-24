@@ -12,6 +12,34 @@
 #define ARG_STR	 0
 #define ARG_UINT 1
 
+#define VERBOSE_LEVEL_ERROR   0
+#define VERBOSE_LEVEL_WARNING 1
+#define VERBOSE_LEVEL_INFO    2
+#define VERBOSE_LEVEL_DEBUG   3
+
+#define VERBOSE_PRINTF(min_level, msg, ...)                     \
+	do {                                                    \
+		if (verbose_level >= min_level)                 \
+			uart_printf(UART0, msg, ##__VA_ARGS__); \
+	} while (0)
+
+// Define for source
+#define DECLARE_VERBOSE_FUNCTIONS(name)          \
+	uint8_t verbose_level;                   \
+	void name##_set_verbose(uint8_t verbose) \
+	{                                        \
+		verbose_level = verbose;         \
+	}                                        \
+	uint8_t name##_get_verbose(void)         \
+	{                                        \
+		return verbose_level;            \
+	}
+
+// Define for header
+#define DECLARE_VERBOSE(name)                     \
+	void name##_set_verbose(uint8_t verbose); \
+	uint8_t name##_get_verbose(void);
+
 struct console_cmd {
 	char *cmd;
 	char *help;
