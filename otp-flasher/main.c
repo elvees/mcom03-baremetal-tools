@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <clk.h>
 #include <console.h>
 #include <delay.h>
 #include <snps_ssi.h>
@@ -23,7 +24,7 @@
 #define STRINGIZE(A) STRINGIZE_NX(A)
 
 #define APP_NAME \
-	"otp-flasher (commit: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "')"
+	"OTP Flasher (commit: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "')"
 
 enum cmd_ids {
 	CMD_HELP,
@@ -153,7 +154,7 @@ static void print_hexdump_body(uint8_t *buf, uint32_t offset, uint32_t len)
 
 static void iface_read_ecc(uint32_t offset)
 {
-	if (offset > OTP_SIZE) {
+	if (offset > OTP_SIZE || (offset & 0x3)) {
 		uart_puts(UART0, "E\nWrong offset\n");
 		return;
 	}
@@ -221,7 +222,7 @@ static void iface_bist(uint32_t offset, uint32_t size)
 	OTP_initForBist();
 	error = OTP_bist(address, size);
 	if (error == OTP_OK) {
-		uart_puts(UART0, "E\nOk\n");
+		uart_puts(UART0, "Ok\n");
 	} else {
 		uart_puts(UART0, "E\nError\n");
 	}
@@ -365,9 +366,23 @@ struct console console = {
 	.run_cmd = console_run,
 };
 
+static uint32_t get_ucg_enabled_mask(struct ucg *ucg)
+{
+	uint32_t mask = 0;
+
+	for (int i = 0; i < 16; i++) {
+		if (ucg_chan_is_enabled(ucg, i))
+			mask |= BIT(i);
+	}
+
+	return mask;
+}
+
 int main()
 {
-	ucg_regs_t *ucg;
+	uint32_t ucg_div_apb;
+	uint32_t ucg_div_core;
+	uint32_t ucg_enabled_mask;
 
 	// Enable clock to HSPERIPH, LSPERIPH0 and LSPERIPH1
 	REG(TOP_CLKGATE) |= BIT(4) | BIT(5) | BIT(6);
@@ -384,25 +399,29 @@ int main()
 	while ((REG(LSPERIPH1_SUBS_PSTATUS) & 0x1f) != PP_ON)
 		continue;
 
-	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
-	ucg->BP_CTR_REG = 0xffff;
+	ucg_enabled_mask = get_ucg_enabled_mask(UCG_SERVICE_UCG0);
+	UCG_SERVICE_UCG0->BP = ucg_enabled_mask;
 	udelay(1);
-
-	if ((REG(SERVICE_URB_PLL) & 0xff) != 7) {
-		// Setup SERVICE clocks as in UART boot mode
-		REG(SERVICE_URB_PLL) = 7; // SERVICE PLL to 216 MHz
-		udelay(1);
-		ucg->CTR_REG[0] = 0x2 | (8 << 10); // CLK_APB div=8 (27 MHz)
-		ucg->CTR_REG[1] = 0x2 | (1 << 10); // CLK_CORE div=1 (216 MHz)
-		ucg->CTR_REG[2] = 0x2 | (1 << 10); // CLK_QSPI0 div=1 (216 MHz)
-		ucg->CTR_REG[4] = 0x2 | (1 << 10); // CLK_RISC0 div=1 (216 MHz)
-		ucg->CTR_REG[11] = 0x2 | (8 << 10); // CLK_SPIOTP div=8 (27 MHz)
-		ucg->CTR_REG[13] = 0x2 | (16 << 10); // CLK_QSPI0_EXT div=16 (13.5 MHz)
-	}
-
+	REG(SERVICE_URB_PLL) = 7; // SERVICE PLL to 216 MHz
 	udelay(1);
-	ucg->SYNC_CLK_REG = 0xfff;
-	ucg->BP_CTR_REG = 0;
+	ucg_div_apb = DIV_ROUND_UP(216, 25); // APB must be 25 MHz or less to works with OTP
+	ucg_div_core = DIV_ROUND_UP(216, 216);
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 0, ucg_div_apb); // CLK_APB
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 1, ucg_div_core); // CLK_CORE
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 2, ucg_div_core); // CLK_QSPI0
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 3, ucg_div_core); // CLK_BPAM
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 4, ucg_div_core); // CLK_RISC0
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 5, ucg_div_apb); // CLK_MFBSP0
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 6, ucg_div_apb); // CLK_MFBSP1
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 7, ucg_div_apb); // CLK_MAILBOX0
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 8, ucg_div_apb); // CLK_PVTCTR
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 9, ucg_div_apb); // CLK_I2C4
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 10, ucg_div_apb); // CLK_TRNG
+	ucg_chan_set_div(UCG_SERVICE_UCG0, 11, ucg_div_apb); // CLK_SPIOTP
+	udelay(1);
+	UCG_SERVICE_UCG0->SYNC = 0xfff;
+	UCG_SERVICE_UCG0->BP = 0;
+	ucg_chan_enable(UCG_SERVICE_UCG0, 11, 1); // CLK_SPIOTP
 
 	// For MIPS timer uses RISC0 frequency. For ARM this function ignored.
 	set_tick_freq(XTI_FREQUENCY * 8);
@@ -412,7 +431,7 @@ int main()
 	REG(LSP0_URB_PLL) = 0;
 	REG(LSP1_URB_PLL) = 0;
 
-	ucg->CTR_REG[6] = 0x2 | (1 << 10); // UART_CLK div=1 (27 MHz)
+	ucg_chan_set_div_and_enable(UCG_LSP1_UCG0, 6, 1, 1); // UART_CLK div=1 (27 MHz)
 
 	// Setup UART0 pads
 	REG(LSP1_URB_PAD_CTR(PORTB, 6)) = PAD_CTL_CTL(0x7) | PAD_CTL_SL(0x3);
@@ -423,9 +442,9 @@ int main()
 
 	uart_flush(UART0);
 	uart_init(UART0, XTI_FREQUENCY, 115200);
+	REG(SEVICE_URB_OTP_MODE) = 0;
 	SBPI_getDefaultDwParams(&Params);
 	SBPI_initMaster(SPI_OTP, &Params);
-	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 	uart_printf(UART0, "%s\n#", APP_NAME);
 
 	while (1) {

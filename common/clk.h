@@ -42,6 +42,9 @@ struct ucg {
 
 #define ucg_chan_get_div(ucg, chan) (((ucg)->CTR[chan] >> 10) & 0xfffff)
 
+#define ucg_chan_set_div(ucg, chan, div) \
+	(ucg)->CTR[chan] = ((ucg)->CTR[chan] & UCG_CLK_EN) | (((div) & 0xfffff) << 10)
+
 #define ucg_chan_set_div_and_enable(ucg, chan, div, enable) \
 	(ucg)->CTR[chan] = (((div) & 0xfffff) << 10) | ((!!(enable)) << 1)
 
