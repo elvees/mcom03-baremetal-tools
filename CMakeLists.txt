@@ -34,6 +34,7 @@ else()
     add_subdirectory(otp-flasher)
 endif()
 
+add_subdirectory(arm-hang-test)
 add_subdirectory(hello-world)
 add_subdirectory(pvt-demo)
 add_subdirectory(soak-test)
