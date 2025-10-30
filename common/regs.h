@@ -280,6 +280,14 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define SDMMC1_BASE 0x10230000UL
 #define QSPI1_BASE  0x10260000
 
+#define WDT_BASE 0x1f080000
+#define WDT_CR	 WDT_BASE
+#define WDT_TORR (WDT_BASE + 0x4)
+#define WDT_CCVR (WDT_BASE + 0x8)
+#define WDT_CRR	 (WDT_BASE + 0xc)
+#define WDT_STAT (WDT_BASE + 0x10)
+#define WDT_EOI	 (WDT_BASE + 0x14)
+
 typedef struct {
 	volatile uint32_t CTR_REG[16];
 	volatile uint32_t BP_CTR_REG;
