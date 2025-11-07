@@ -83,9 +83,16 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define PP_WARM_RST 0x8
 #define PP_OFF	    0x1
 
-#define CPU_URB	    0x1000000
-#define CPU_URB_PLL (CPU_URB + 0x50)
-#define CPU_UCG	    0x1080000
+#define CPU_URB			   0x1000000
+#define CPU_URB_A53SYS_PPOLICY	   (CPU_URB + 0x40)
+#define CPU_URB_A53SYS_PSTATUS	   (CPU_URB + 0x44)
+#define CPU_URB_A53CPUX_PPOLICY(i) (CPU_URB + (i) * 0x10)
+#define CPU_URB_A53CPUX_PSTATUS(i) (CPU_URB + 0x4 + (i) * 0x10)
+#define CPU_URB_PLL		   (CPU_URB + 0x50)
+#define CPU_URB_STARTCFG	   (CPU_URB + 0x114)
+#define CPU_URB_RVBADDRL(i)	   (CPU_URB + 0x11c + (i) * 8)
+#define CPU_URB_RVBADDRH(i)	   (CPU_URB + 0x118 + (i) * 8)
+#define CPU_UCG			   0x1080000
 
 #define SERVICE_BASE	    0x1f000000
 #define SERVICE_URB	    SERVICE_BASE
