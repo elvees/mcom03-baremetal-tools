@@ -1,0 +1,73 @@
+OUTPUT_FORMAT("elf32-littlemips")
+OUTPUT_ARCH("mips:isa32")
+
+ENTRY(_start)
+
+GROUP(-lc -lgcc)
+
+MEMORY
+{
+    xip0 (rwx) : ORIGIN = 0x00000000, LENGTH = 0x1000000
+    cram (rwx) : ORIGIN = 0x9fa00000, LENGTH = 0x8000
+}
+
+SECTIONS
+{
+  .text ORIGIN(xip0) : {
+    *(.text.boot)
+    *(.text)
+    *(.text.*)
+    *(.rodata)
+    *(.rodata.*)
+    *(.got)
+    *(.got.*)
+    . = ALIGN(4);
+  } > xip0
+
+  __text_end = ABSOLUTE(.);
+
+  .data : AT (__text_end) {
+    __data_start = ABSOLUTE(.);
+    *(.data)
+    *(.data.*)
+    *(.gnu.*)
+    . = ALIGN(4);
+    _gp = ABSOLUTE(.);  /* Base of small data (for MIPS) */
+    *(.sdata)
+    *(.sdata.*)
+    . = ALIGN(4);
+    __data_end = ABSOLUTE(.);
+  } > cram
+
+  .sbss (NOLOAD) : {
+    __bss_start = ABSOLUTE(.);
+    *(.sbss)
+    *(.sbss.*)
+    *(.scommon)
+  } > cram
+
+  .bss (NOLOAD) : {
+    *(.bss)
+    *(.bss.*)
+    *(COMMON)
+    . = ALIGN(4);
+    __bss_end = ABSOLUTE(.);
+    __bss_length = ABSOLUTE(.) - __bss_start;
+  } > cram
+
+  _stack = ORIGIN(cram) + LENGTH(cram) - 0x20;
+
+  /DISCARD/ : {
+    *(.reginfo)
+    *(.MIPS.abiflags)
+    *(.dynamic)
+    *(.interp)
+    *(.rela.*)
+    *(.eh_frame_hdr)
+    *(.dynstr)
+    *(.hash)
+    *(.dynsym)
+    *(.gnu.hash)
+    *(.comment)
+  }
+}
