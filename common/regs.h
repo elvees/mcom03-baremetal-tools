@@ -46,11 +46,12 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define dcache_invalidate()
 #endif
 
-#define REG(x)		   (*((volatile uint32_t *)((uintptr_t)(TO_VIRT(x)))))
-#define REG64(x)	   (*((volatile uint64_t *)((uintptr_t)(TO_VIRT(x)))))
-#define BIT(x)		   (1UL << (x))
-#define ARRAY_LENGTH(x)	   (sizeof(x) / sizeof((x)[0]))
-#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+#define REG(x)			(*((volatile uint32_t *)((uintptr_t)(TO_VIRT(x)))))
+#define REG64(x)		(*((volatile uint64_t *)((uintptr_t)(TO_VIRT(x)))))
+#define BIT(x)			(1UL << (x))
+#define ARRAY_LENGTH(x)		(sizeof(x) / sizeof((x)[0]))
+#define DIV_ROUND_UP(n, d)	(((n) + (d) - 1) / (d))
+#define DIV_ROUND_CLOSEST(n, d) (((n) + ((d) >> 1)) / (d))
 
 #define CPU_SUBS_PPOLICY 0x1f000000
 #define CPU_SUBS_PSTATUS 0x1f000004

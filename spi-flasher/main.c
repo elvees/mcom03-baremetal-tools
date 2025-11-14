@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <clk.h>
 #include <console.h>
 #include <delay.h>
 #include <gpio.h>
@@ -38,6 +39,7 @@
 
 enum cmd_ids {
 	CMD_HELP,
+	CMD_BAUDRATE,
 	CMD_QSPI,
 	CMD_ERASE,
 	CMD_WRITE,
@@ -61,6 +63,14 @@ struct console_cmd console_cmd[] = {
 		.help = "show this message",
 		.arg_min = 0,
 		.arg_max = 0,
+	},
+	{
+		.cmd_id = CMD_BAUDRATE,
+		.cmd = "baudrate",
+		.help = "change UART baudrate: baudrate [value]",
+		.arg_min = 1,
+		.arg_max = 1,
+		.arg_types = { ARG_UINT },
 	},
 	{
 		.cmd_id = CMD_QSPI,
@@ -160,13 +170,83 @@ void __stack_chk_fail(void)
 {
 }
 
+void set_baudrate(uint32_t baudrate)
+{
+	uint32_t bp_mask = 0;
+	uint32_t freq;
+	uint32_t div27m;
+	uint32_t div = 1;
+	uint32_t nf, od;
+	uint32_t value;
+
+	if (baudrate == 115200) {
+		nf = 0;
+		od = 0;
+	} else if ((baudrate >= 50) &&
+		   (baudrate < 115200 || ((baudrate <= 1152000) && (baudrate % 115200) == 0))) {
+		nf = 82;
+		od = 6;
+	} else if (baudrate == 2500000) {
+		nf = 77;
+		od = 4;
+	} else if (baudrate == 3500000) {
+		nf = 112;
+		od = 2;
+	} else if ((baudrate % 500000) == 0) {
+		nf = 128;
+		od = 2;
+	} else {
+		uart_printf(UART0, "Error: Baudrate %d is not supported\n", baudrate);
+		return;
+	}
+
+	uart_puts(UART0, "\n#");
+	uart_flush(UART0);
+	for (int i = 0; i < 10; i++) {
+		if (ucg_chan_is_enabled(UCG_LSP1_UCG0, i))
+			bp_mask |= BIT(i);
+	}
+
+	UCG_LSP1_UCG0->BP = bp_mask;
+	if (nf) {
+		set_pll_man(LSP1_URB_PLL, 1, nf, od);
+		poll_timeout(REG(LSP1_URB_PLL), value, value & PLL_LOCK, 0, 10000);
+	} else {
+		REG(LSP1_URB_PLL) = 0;
+	}
+
+	freq = clk_pll_calc_freq(REG(LSP1_URB_PLL), XTI_FREQUENCY);
+	div27m = DIV_ROUND_UP(freq, 27000000);
+	for (int i = 0; i < 10; i++) {
+		if (bp_mask & BIT(i)) {
+			if (i == 6) { // UART0
+				if (baudrate == 115200)
+					div = 1;
+				else
+					div = DIV_ROUND_CLOSEST(freq, baudrate * 16);
+
+				ucg_chan_set_div_and_enable(UCG_LSP1_UCG0, i, div, 1);
+			} else {
+				ucg_chan_set_div_and_enable(UCG_LSP1_UCG0, i, div27m, 1);
+			}
+
+			poll_timeout(REG(UCG_LSP1_UCG0), value, value & UCG_DIV_LOCK, 0, 10000);
+		}
+	}
+
+	UCG_LSP1_UCG0->BP = 0;
+	udelay(10);
+	uart_init(UART0, freq / div, baudrate);
+	uart_printf(UART0, "Baudrate changed to %d\n", baudrate);
+}
+
 void run_bootrom(void)
 {
 	void (*bootrom)(void) = (void *)0x9fc00000;
 	ucg_regs_t *ucg;
 
 	uart_printf(UART0, "Restore default state and restart BootROM...\n");
-	uart_flush(UART0);
+	set_baudrate(115200);
 	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 	ucg->BP_CTR_REG = 0xffff;
 	set_tick_freq(XTI_FREQUENCY);
@@ -598,6 +678,9 @@ void console_run(struct console *console, struct console_cmd *cmd, struct consol
 	switch (cmd->cmd_id) {
 	case CMD_HELP:
 		console_help(console);
+		break;
+	case CMD_BAUDRATE:
+		set_baudrate(args[0].uint);
 		break;
 	case CMD_QSPI:
 		if (qspi_prepare(args[0].uint, args[1].uint))
