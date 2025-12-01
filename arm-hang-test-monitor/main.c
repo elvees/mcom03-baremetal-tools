@@ -49,6 +49,11 @@ static void hw_init(void)
 
 	uart_init(UART0, XTI_FREQUENCY, 115200);
 
+	/* Required for ddrinit */
+	REG(LSP1_UCG_CTRL7) = 2;
+	REG(TIMER_LOAD_COUNT(7)) = 0;
+	REG(TIMER_CTRL(7)) = 5;
+
 	wdt_start(0xf);
 }
 
@@ -146,6 +151,8 @@ int main(void)
 	for (i = 0; i < 4; i++) {
 		start_arm_core(i, 0x890400000);
 	}
+
+	mdelay(10);
 
 	val = REG(TEST_MAGIC_ADDR);
 	if (val != TEST_MAGIC) {

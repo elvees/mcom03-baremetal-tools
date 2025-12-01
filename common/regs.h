@@ -138,6 +138,7 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 
 #define LSP1_UCG_CTRL4 (LSP1_UCG + 0x10) // GPIO_DBCLK
 #define LSP1_UCG_CTRL6 (LSP1_UCG + 0x18) // UART_CLK
+#define LSP1_UCG_CTRL7 (LSP1_UCG + 0x1c) // TIMERS
 
 #define UCG_CTR_CLK_EN BIT(1)
 
