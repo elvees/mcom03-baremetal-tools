@@ -13,7 +13,7 @@ MEMORY
 
 SECTIONS
 {
-  .text ORIGIN(xip0) : {
+  .text ORIGIN(CONFIG_REGION) : {
     *(.text.boot)
     *(.text)
     *(.text.*)
@@ -22,7 +22,7 @@ SECTIONS
     *(.got)
     *(.got.*)
     . = ALIGN(4);
-  } > xip0
+  } > CONFIG_REGION
 
   __text_end = ABSOLUTE(.);
 

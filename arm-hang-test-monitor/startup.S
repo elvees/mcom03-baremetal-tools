@@ -90,4 +90,7 @@ bss_zero_done:
 	la	a2, main
 	jalr	a2
 	nop
+jtag:
+	nop
+	b jtag
 END(_start)

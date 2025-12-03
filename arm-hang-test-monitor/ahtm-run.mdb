@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: MIT
+# Copyright 2025 RnD Center "ELVEES", JSC
+
+# MDB script to run arm-hang-test using JTAG
+
+pb python
+pb import os
+pb import sys
+pb ahtm = os.environ.get('AHTM_PATH', './ahtm-jtag.elf')
+pb aht = os.environ.get('AHT_PATH', './arm-hang-test.bin')
+pb ddrinit = os.environ.get('DDRINIT_PATH', './ddrinit.elf')
+
+pb ddr_pll1_nf = os.environ.get('DDR_PLL1_NF', 43)
+pb ddr_cpu_div = os.environ.get('DDR_CPU_DIV', 2)
+
+pb top_pll_nf = os.environ.get('TOP_PLL_NF', 43)
+pb top_cpu_div = os.environ.get('TOP_CPU_DIV', 2)
+
+pb cpu_pll_nf = os.environ.get('CPU_PLL_NF', 42)
+pb cpu_dbus_div = os.environ.get('CPU_DBUS_DIV', 2)
+
+pb reset_counters_interval = os.environ.get('RESET_COUNTERS_INTERVAL', 2000)
+pb max_iters = os.environ.get('TEST_MAX_ITERS', 20)
+pb vdd = os.environ.get('VDD', 80)
+pb end
+
+# Set top_clk_gate
+set 0xbf001008 0x1d5
+
+# Deassert LSP1 subs reset
+set 0xbf000030 0x10
+
+# Deassert CPU subs reset
+set 0xbf000000 0x10
+
+# Enable UART, GPIO, TIMERS clocks #
+set 0xa17e0000 0x0
+set 0xa17c0010 0x2
+set 0xa17c0018 0x2
+set 0xa17c001c 0x2
+set 0xbf020024 0x2
+set 0xbf020030 0x2
+
+# Configure Timers[7] (required for ddrinit)
+set 0xa179008c 0x0
+set 0xa1790094 0x5
+
+# Configure UART GPIO pads
+set 0xa1780014 0xc0
+
+# Load and run ddrinit to setup DDR memory
+py mdb.execute(f"loadelf {ddrinit}")
+py mdb.execute(f"set ddr_pll1_nf {ddr_pll1_nf}")
+py mdb.execute(f"set ddr_cpu_div {ddr_cpu_div}")
+py mdb.execute(f"set vdd {vdd}")
+hbp set jtag
+run
+hbp unset jtag
+
+py mdb.execute(f"loadbin {aht} 0xc0000000")
+py mdb.execute(f"loadelf {ahtm}")
+hbp set jtag
+set 0xa000f00c 0x87654321
+py mdb.execute(f"set 0xa000f010 {max_iters}")
+
+py mdb.execute(f"set top_pll_nf {top_pll_nf}")
+py mdb.execute(f"set top_cpu_div {top_cpu_div}")
+
+py mdb.execute(f"set cpu_pll_nf {cpu_pll_nf}")
+py mdb.execute(f"set cpu_dbus_div {cpu_dbus_div}")
+
+py mdb.execute(f"set ddr_pll1_nf {ddr_pll1_nf}")
+py mdb.execute(f"set ddr_cpu_div {ddr_cpu_div}")
+
+py mdb.execute(f"set reset_counters_interval {reset_counters_interval}")
+run
+hbp unset jtag
+
+quit
