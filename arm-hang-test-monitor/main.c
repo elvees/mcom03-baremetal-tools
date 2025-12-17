@@ -28,6 +28,18 @@
 #define TEST_MAX_ITERS_DEFAULT	     20
 #define TEST_MAX_ITERS_OVERRIDE_ADDR 0xf010
 
+/* Parameters that can be redefined externally in MDB scripts */
+int top_pll_nf = 43;
+int top_cpu_div = 2;
+
+int cpu_pll_nf = 42;
+int cpu_dbus_div = 2;
+
+int ddr_pll1_nf = 43;
+int ddr_cpu_div = 2;
+
+int reset_counters_interval = 2000;
+
 #ifndef JTAG_BUILD
 static void hw_init(void)
 {
@@ -67,7 +79,11 @@ static int clocks_cfg(void)
 {
 	int ret;
 	uint32_t val;
-	const uint32_t cpu_divs[] = { 4, 1, 2 };
+	uint32_t cpu_divs[3];
+
+	cpu_divs[0] = cpu_dbus_div * 2;
+	cpu_divs[1] = cpu_dbus_div / 2;
+	cpu_divs[2] = cpu_dbus_div;
 
 	/* Set CPU fastlink clock to 594 МГц.
 	 * All other fastlink clock remains 27 MHz.
@@ -75,14 +91,14 @@ static int clocks_cfg(void)
 	UCG_IC_UCG0->BP = 0xff;
 	UCG_IC_UCG1->BP = 0x1f5;
 
-	set_pll_man(IC_URB_PLL, 1, 44, 1);
+	set_pll_man(IC_URB_PLL, 1, top_pll_nf + 1, 1);
 	ret = poll_timeout(REG(IC_URB_PLL), val, val & PLL_LOCK, 0, 100000);
 	if (ret) {
 		uart_printf(UART0, "IC PLL lock timeout\n");
 		return ret;
 	}
 
-	ucg_chan_set_div_and_enable(UCG_IC_UCG0, 4, 2, 1);
+	ucg_chan_set_div_and_enable(UCG_IC_UCG0, 4, top_cpu_div, 1);
 	ret = poll_timeout(UCG_IC_UCG0->CTR[4], val, val & UCG_DIV_LOCK, 0, 100000);
 	if (ret) {
 		uart_printf(UART0, "IC UCG0 channel 4 lock timeout\n");
@@ -101,7 +117,7 @@ static int clocks_cfg(void)
 	UCG_CPU_UCG0->BP = 7;
 	mdelay(1);
 
-	set_pll_man(CPU_URB_PLL, 1, 43, 1);
+	set_pll_man(CPU_URB_PLL, 1, cpu_pll_nf + 1, 1);
 	ret = poll_timeout(REG(CPU_URB_PLL), val, val & PLL_LOCK, 0, 100000);
 	if (ret) {
 		uart_printf(UART0, "CPU PLL lock timeout\n");
@@ -168,7 +184,7 @@ int main(void)
 	mdelay(10);
 
 	val = REG(TEST_MAGIC_ADDR);
-	if (val != TEST_MAGIC) {
+	if ((val != TEST_MAGIC) || (REG(TEST_COUNTER_ADDR) >= reset_counters_interval)) {
 		REG(TEST_COUNTER_ADDR) = 0;
 		REG(TEST_FAIL_COUNTER_ADDR) = 0;
 		REG(TEST_MAGIC_ADDR) = TEST_MAGIC;
@@ -225,6 +241,15 @@ int main(void)
 		    REG(TEST_RESULT_ADDR + 24));
 
 	uart_printf(UART0, "TEST FAILED percentage: %d/%d\n", REG(TEST_FAIL_COUNTER_ADDR),
+		    REG(TEST_COUNTER_ADDR));
+
+	uart_printf(UART0, "DDR/TOP/CPU PLL NF: %d/%d/%d\n", ddr_pll1_nf, top_pll_nf, cpu_pll_nf);
+
+	uart_printf(UART0, "%d;%d;%d;%d/%d\n",
+		    27 * (ddr_pll1_nf + 1) / ddr_cpu_div,
+		    27 * (top_pll_nf + 1) / top_cpu_div,
+		    27 * (cpu_pll_nf + 1) / cpu_dbus_div,
+		    REG(TEST_FAIL_COUNTER_ADDR),
 		    REG(TEST_COUNTER_ADDR));
 
 #ifndef JTAG_BUILD
