@@ -6,6 +6,53 @@
 
 #include <stdint.h>
 
+#ifdef MIPS32
+static unsigned long tick_freq = XTI_FREQUENCY;
+
+static inline void set_tick_freq(unsigned long freq)
+{
+	tick_freq = freq;
+}
+
+static inline unsigned long _get_tick_freq(void)
+{
+	return tick_freq;
+}
+
+static inline unsigned long _get_tick_counter(void)
+{
+	unsigned long count;
+
+	asm volatile("mfc0 %0, $9" : "=r"(count));
+
+	return count;
+}
+
+#else
+static inline void set_tick_freq(unsigned long freq)
+{
+}
+
+static inline unsigned long _get_tick_freq(void)
+{
+	unsigned long cntfrq;
+
+	asm volatile("mrs %0, cntfrq_el0" : "=r"(cntfrq));
+
+	return cntfrq;
+}
+
+static inline unsigned long _get_tick_counter(void)
+{
+	unsigned long cntpct;
+
+	asm volatile("isb sy" : : : "memory");
+	asm volatile("mrs %0, cntpct_el0" : "=r"(cntpct));
+
+	return cntpct;
+}
+#endif
+
 #define poll_timeout(op, val, cond, sleep_us, timeout_us)                              \
 	({                                                                             \
 		unsigned long tick_start = get_tick_counter();                         \

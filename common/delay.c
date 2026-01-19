@@ -5,53 +5,6 @@
 #include <delay.h>
 #include <regs.h>
 
-#ifdef MIPS32
-static unsigned long tick_freq = XTI_FREQUENCY;
-
-void set_tick_freq(unsigned long freq)
-{
-	tick_freq = freq;
-}
-
-static inline unsigned long _get_tick_freq(void)
-{
-	return tick_freq;
-}
-
-static inline unsigned long _get_tick_counter(void)
-{
-	unsigned long count;
-
-	asm volatile("mfc0 %0, $9" : "=r"(count));
-
-	return count;
-}
-
-#else
-void set_tick_freq(unsigned long freq)
-{
-}
-
-static inline unsigned long _get_tick_freq(void)
-{
-	unsigned long cntfrq;
-
-	asm volatile("mrs %0, cntfrq_el0" : "=r"(cntfrq));
-
-	return cntfrq;
-}
-
-static inline unsigned long _get_tick_counter(void)
-{
-	unsigned long cntpct;
-
-	asm volatile("isb sy" : : : "memory");
-	asm volatile("mrs %0, cntpct_el0" : "=r"(cntpct));
-
-	return cntpct;
-}
-#endif
-
 uint32_t get_ticks_per_us(void)
 {
 	return _get_tick_freq() / 1000000;

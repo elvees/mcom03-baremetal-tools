@@ -40,6 +40,10 @@ int ddr_cpu_div = 2;
 
 int reset_counters_interval = 2000;
 
+uint32_t cpu_pll_status = 0;
+uint32_t top_pll_status = 0;
+uint32_t ddr_pll_status = 0;
+
 #ifndef JTAG_BUILD
 static void hw_init(void)
 {
@@ -142,6 +146,38 @@ static int clocks_cfg(void)
 	return 0;
 }
 
+static void read_pll_status(uint32_t ticks_count)
+{
+	unsigned long tick_start = _get_tick_counter();
+	unsigned long tick = tick_start + ticks_count;
+
+	if (tick < tick_start) {
+		while (_get_tick_counter() > tick_start) {
+			cpu_pll_status |= REG(CPU_URB_PLL_DIAG);
+			ddr_pll_status |= REG(DDR_URB_PLL1_DIAG);
+			top_pll_status |= REG(IC_URB_PLL_DIAG);
+		}
+	}
+
+	while (_get_tick_counter() < tick) {
+		cpu_pll_status |= REG(CPU_URB_PLL_DIAG);
+		ddr_pll_status |= REG(DDR_URB_PLL1_DIAG);
+		top_pll_status |= REG(IC_URB_PLL_DIAG);
+	}
+}
+
+void mdelay_and_read_pll_status(uint32_t ms)
+{
+	uint32_t ticks_per_s = _get_tick_freq();
+	uint32_t ticks_per_ms = ticks_per_s / 1000;
+
+	while (ms > 1000) {
+		read_pll_status(ticks_per_s);
+		ms -= 1000;
+	}
+	read_pll_status(ms * ticks_per_ms);
+}
+
 int main(void)
 {
 	int i, ret;
@@ -225,7 +261,7 @@ int main(void)
 			break;
 		}
 
-		mdelay(2000);
+		mdelay_and_read_pll_status(2000);
 
 		uart_printf(UART0, "counters: %d, %d, %d, %d\n", curr,
 			    REG(TEST_RESULT_ADDR + 8), REG(TEST_RESULT_ADDR + 16),
@@ -251,6 +287,15 @@ int main(void)
 		    27 * (cpu_pll_nf + 1) / cpu_dbus_div,
 		    REG(TEST_FAIL_COUNTER_ADDR),
 		    REG(TEST_COUNTER_ADDR));
+
+	if (FIELD_GET(PLL_DIAG_RFSLIP, ddr_pll_status) ||
+	    FIELD_GET(PLL_DIAG_FBSLIP, ddr_pll_status) ||
+	    FIELD_GET(PLL_DIAG_RFSLIP, top_pll_status) ||
+	    FIELD_GET(PLL_DIAG_FBSLIP, top_pll_status) ||
+	    FIELD_GET(PLL_DIAG_RFSLIP, cpu_pll_status) ||
+	    FIELD_GET(PLL_DIAG_FBSLIP, cpu_pll_status))
+		uart_printf(UART0, "PLL RF/FB slip detected!: 0x%x, 0x%x, 0x%x\n",
+			    ddr_pll_status, top_pll_status, cpu_pll_status);
 
 #ifndef JTAG_BUILD
 	wdt_start(0);

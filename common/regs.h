@@ -84,12 +84,16 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define PP_WARM_RST 0x8
 #define PP_OFF	    0x1
 
+#define PLL_DIAG_RFSLIP BIT(3)
+#define PLL_DIAG_FBSLIP BIT(4)
+
 #define CPU_URB			   0x1000000
 #define CPU_URB_A53SYS_PPOLICY	   (CPU_URB + 0x40)
 #define CPU_URB_A53SYS_PSTATUS	   (CPU_URB + 0x44)
 #define CPU_URB_A53CPUX_PPOLICY(i) (CPU_URB + (i) * 0x10)
 #define CPU_URB_A53CPUX_PSTATUS(i) (CPU_URB + 0x4 + (i) * 0x10)
 #define CPU_URB_PLL		   (CPU_URB + 0x50)
+#define CPU_URB_PLL_DIAG	   (CPU_URB + 0x54)
 #define CPU_URB_STARTCFG	   (CPU_URB + 0x114)
 #define CPU_URB_RVBADDRL(i)	   (CPU_URB + 0x11c + (i) * 8)
 #define CPU_URB_RVBADDRH(i)	   (CPU_URB + 0x118 + (i) * 8)
@@ -263,6 +267,7 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 
 #define IC_URB		      IC_BASE
 #define IC_URB_PLL	      IC_URB
+#define IC_URB_PLL_DIAG	      (IC_URB + 0x4)
 #define IC_URB_SLOW_AXI_DLOCK (IC_URB + 0x60)
 #define IC_URB_FAST_AXI_DLOCK (IC_URB + 0x64)
 #define IC_URB_COH_AXI_DLOCK  (IC_URB + 0x68)
@@ -271,16 +276,18 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define IC_UCG0 (IC_BASE + 0x1000)
 #define IC_UCG1 (IC_BASE + 0x2000)
 
-#define DDR_BASE     0x4000000
-#define DDR_PHY0     DDR_BASE
-#define DDR_CTL0     (DDR_BASE + 0x2000000)
-#define DDR_PHY1     (DDR_BASE + 0x4000000)
-#define DDR_CTL1     (DDR_BASE + 0x6000000)
-#define DDR_URB	     (DDR_BASE + 0x8000000)
-#define DDR_URB_PLL0 DDR_URB
-#define DDR_URB_PLL1 (DDR_URB + 0x8)
-#define DDR_UCG0     (DDR_BASE + 0x8010000)
-#define DDR_UCG1     (DDR_BASE + 0x8020000)
+#define DDR_BASE	  0x4000000
+#define DDR_PHY0	  DDR_BASE
+#define DDR_CTL0	  (DDR_BASE + 0x2000000)
+#define DDR_PHY1	  (DDR_BASE + 0x4000000)
+#define DDR_CTL1	  (DDR_BASE + 0x6000000)
+#define DDR_URB		  (DDR_BASE + 0x8000000)
+#define DDR_URB_PLL0	  DDR_URB
+#define DDR_URB_PLL0_DIAG (DDR_URB + 0x4)
+#define DDR_URB_PLL1	  (DDR_URB + 0x8)
+#define DDR_URB_PLL1_DIAG (DDR_URB + 0xc)
+#define DDR_UCG0	  (DDR_BASE + 0x8010000)
+#define DDR_UCG1	  (DDR_BASE + 0x8020000)
 
 #define HSP_UCG(x)  (0x10410000 + ((x) * 0x10000))
 #define EMAC0_BASE  0x10200000
