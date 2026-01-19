@@ -76,4 +76,10 @@ py mdb.execute(f"set reset_counters_interval {reset_counters_interval}")
 run
 hbp unset jtag
 
+pb python
+pb iter_counter = int(mdb.execute(f"show 0xa000f004", to_string=True).split(':')[-1], 16)
+pb fail_counter = int(mdb.execute(f"show 0xa000f008", to_string=True).split(':')[-1], 16)
+pb print(f"TEST RESULT: {fail_counter}/{iter_counter}")
+pb end
+
 quit
