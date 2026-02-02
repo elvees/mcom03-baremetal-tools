@@ -12,6 +12,9 @@
 #include <uart.h>
 #include <wdt.h>
 
+#define STRINGIZE_NX(A) #A
+#define STRINGIZE(A)	STRINGIZE_NX(A)
+
 #define DDRINIT_ADDR 0x10000
 #define DDRINIT_SIZE 0xf000
 
@@ -191,6 +194,9 @@ int main(void)
 	max_iters = REG(TEST_MAX_ITERS_OVERRIDE_ADDR);
 #else
 	hw_init();
+
+	uart_printf(UART0,
+		    "arm-hang-test-monitor: version: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "'\n");
 
 	uart_puts(UART0, "arm-hang-test-monitor: Loading ddrinit... \n");
 	memcpy((void *)0x80000000, (void *)DDRINIT_ADDR, DDRINIT_SIZE);
