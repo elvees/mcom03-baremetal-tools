@@ -69,13 +69,14 @@ static uint32_t str2uint(char *s, bool *ok)
 	return value;
 }
 
-static void console_find_cmd(struct console *console, struct console_arg *args, int argc)
+static void console_find_cmd(struct console *console, char *line, struct console_arg *args,
+			     int argc)
 {
 	struct console_cmd *cmd = NULL;
 	bool ok;
 
 	for (int i = 0; i < console->cmds_count; i++) {
-		if (!strcmp(console->cmds[i].cmd, console->line)) {
+		if (!strcmp(console->cmds[i].cmd, line)) {
 			cmd = &console->cmds[i];
 			if (argc < console->cmds[i].arg_min || argc > console->cmds[i].arg_max) {
 				uart_puts(console->uart, "Error: Wrong arguments count\n");
@@ -97,7 +98,7 @@ static void console_find_cmd(struct console *console, struct console_arg *args, 
 		}
 	}
 	if (!cmd) {
-		uart_printf(console->uart, "Error: Unknown command '%s'\n", console->line);
+		uart_printf(console->uart, "Error: Unknown command '%s'\n", line);
 		return;
 	}
 	if (console->run_cmd)
@@ -107,14 +108,20 @@ static void console_find_cmd(struct console *console, struct console_arg *args, 
 static void console_parse(struct console *console)
 {
 	struct console_arg args[5];
+	char *line = console->line;
 	int argc = 0;
-	int size = strlen(console->line);
+	int size;
 	bool last_space = false;
 
+	while (*line == ' ') {
+		line++;
+	}
+
+	size = strlen(line);
 	for (int i = 0; i < size; i++) {
-		if (console->line[i] == ' ') {
+		if (line[i] == ' ') {
 			if (!last_space)
-				console->line[i] = '\0';
+				line[i] = '\0';
 			last_space = true;
 		} else {
 			if (last_space) {
@@ -122,12 +129,12 @@ static void console_parse(struct console *console)
 					uart_puts(console->uart, "Error: Too many arguments\n");
 					return;
 				}
-				args[argc++].str = &console->line[i];
+				args[argc++].str = &line[i];
 				last_space = false;
 			}
 		}
 	}
-	if (console->line[0] == '\0') {
+	if (line[0] == '\0') {
 		if (console->each_line_msg) {
 			uart_puts(console->uart, console->each_line_msg);
 			uart_putc(console->uart, '\n');
@@ -135,7 +142,7 @@ static void console_parse(struct console *console)
 		return;
 	}
 
-	console_find_cmd(console, args, argc);
+	console_find_cmd(console, line, args, argc);
 }
 
 static void console_move_coursor(struct console *console, int shift, bool to_left)
@@ -204,6 +211,7 @@ void console_process(struct console *console)
 			console_move_coursor(console, console->size - console->pos + 1, true);
 		}
 		break;
+	case 0xa:
 	case 0xd:
 		uart_putc(console->uart, '\n');
 		console_parse(console);
@@ -211,7 +219,8 @@ void console_process(struct console *console)
 		console->pos = 0;
 		console->size = 0;
 		console->line[0] = '\0';
-	case 0xa:
+		break;
+	case '\t':
 		break;
 	default:
 		if (console->is_esc_seq) {
