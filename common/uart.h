@@ -5,6 +5,7 @@
 #define UART_H_
 
 #include <stdint.h>
+#include <stdarg.h>
 
 #include <regs.h>
 
@@ -67,6 +68,7 @@ int uart_is_char_ready(struct uart *uart);
 void uart_clear_input_buffer(struct uart *uart);
 void uart_flush(struct uart *uart);
 void uart_write(struct uart *uart, char *ptr, int len);
+void uart_vprintf(struct uart *uart, char *s, va_list args);
 void uart_printf(struct uart *uart, char *s, ...);
 uint16_t uart_get_div(struct uart *uart);
 void uart_set_div(struct uart *uart, uint16_t div);

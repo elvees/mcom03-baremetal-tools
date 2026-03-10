@@ -115,13 +115,11 @@ static void uart_putint(struct uart *uart, uint32_t data, int is_signed, int dig
 	uart_write(uart, buf + pos, sizeof(buf) - pos);
 }
 
-void uart_printf(struct uart *uart, char *s, ...)
+void uart_vprintf(struct uart *uart, char *s, va_list args)
 {
 	uint32_t digits = 0;
 	int is_percent_handler = 0;
 
-	va_list args;
-	va_start(args, s);
 	while (*s) {
 		if (*s == '%') {
 			digits = 0;
@@ -146,6 +144,7 @@ void uart_printf(struct uart *uart, char *s, ...)
 				}
 				is_percent_handler = 0;
 				break;
+			case 'p':
 			case 'x':
 			case 'X':
 				uart_puthex(uart, va_arg(args, uint32_t), digits);
@@ -175,6 +174,13 @@ void uart_printf(struct uart *uart, char *s, ...)
 		} else
 			uart_putc(uart, *s++);
 	}
+}
+
+void uart_printf(struct uart *uart, char *s, ...)
+{
+	va_list args;
+	va_start(args, s);
+	uart_vprintf(uart, s, args);
 	va_end(args);
 }
 
