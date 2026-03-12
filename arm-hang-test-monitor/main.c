@@ -195,15 +195,15 @@ int main(void)
 #else
 	hw_init();
 
-	uart_printf(UART0,
-		    "arm-hang-test-monitor: version: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "'\n");
-
-	uart_puts(UART0, "arm-hang-test-monitor: Loading ddrinit... \n");
+	/* Load ddrinit */
 	memcpy((void *)0x80000000, (void *)DDRINIT_ADDR, DDRINIT_SIZE);
 
 	void (*start_ddrinit)(void) = (void *)0x80000000;
 	start_ddrinit();
 #endif
+	uart_printf(UART0,
+		    "arm-hang-test-monitor: version: '" STRINGIZE(GIT_SHA1_SHORT) "', build: '" STRINGIZE(BUILD_ID) "'\n");
+
 	ret = clocks_cfg();
 	if (ret) {
 		while (1)
