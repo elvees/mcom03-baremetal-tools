@@ -731,7 +731,7 @@ int otp_program(uint32_t *buffer, uint8_t *ecc, uint16_t otp_addr, uint32_t coun
 		.timing_ctrl2 = 0x54,
 		.dap_addr = 0x2,
 		.cq_prog.ainc = 1,
-		.cq_prog.entry = ecc ? 4 : 0,
+		.cq_prog.entry = ecc ? 0xa : 0,
 		.ctrl_status = PROG_INST,
 	};
 
