@@ -288,16 +288,8 @@ int main()
 	uint32_t ucg_div_core;
 	uint32_t ucg_enabled_mask;
 
-	// Enable clock to HSPERIPH, LSPERIPH0 and LSPERIPH1
-	REG(TOP_CLKGATE) |= BIT(4) | BIT(5) | BIT(6);
-
-	REG(HSPERIPH_SUBS_PPOLICY) = PP_ON; // Enable HSPERIPH
-	while ((REG(HSPERIPH_SUBS_PSTATUS) & 0x1f) != PP_ON)
-		continue;
-
-	REG(LSPERIPH0_SUBS_PPOLICY) = PP_ON; // Enable LSPERIPH0
-	while ((REG(LSPERIPH0_SUBS_PSTATUS) & 0x1f) != PP_ON)
-		continue;
+	// Enable clock to LSPERIPH1 (HSPERIPH is enabled by default)
+	REG(TOP_CLKGATE) |= BIT(6);
 
 	REG(LSPERIPH1_SUBS_PPOLICY) = PP_ON; // Enable LSPERIPH1
 	while ((REG(LSPERIPH1_SUBS_PSTATUS) & 0x1f) != PP_ON)
@@ -332,7 +324,6 @@ int main()
 
 	// Turn PLLs to bypass mode
 	REG(HSP_URB_PLL) = 0;
-	REG(LSP0_URB_PLL) = 0;
 	REG(LSP1_URB_PLL) = 0;
 
 	ucg_chan_set_div_and_enable(UCG_LSP1_UCG0, 6, 1, 1); // UART0_CLK div=1 (27 MHz)
