@@ -236,7 +236,7 @@ int main(void)
 	REG(TEST_COUNTER_ADDR) = val + 1;
 
 #ifdef BOARD_ELVMC03SMARC_R3
-	gpio_set_function_mask(GPIO1, GPIO_BANK_B, BIT(2) | BIT(3), GPIO_FUNC_GPIO);
+	gpio_set_function_mask(GPIO1, GPIO_BANK_D, BIT(2) | BIT(3), GPIO_FUNC_GPIO);
 	gpio_set_direction_mask(GPIO1, GPIO_BANK_D, BIT(2) | BIT(3), GPIO_DIR_OUT);
 
 	val = REG(TEST_FAIL_COUNTER_ADDR);
