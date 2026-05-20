@@ -31,14 +31,14 @@
 #define gpio_set_function_mask(g, b, mask, func) \
 	_gpio_set_mask(g, b, 0x8, mask, func, GPIO_FUNC_GPIO)
 #define gpio_set_direction_mask(g, b, mask, dir) _gpio_set_mask(g, b, 0x4, mask, dir, GPIO_DIR_IN)
-#define gpio_set_value_mask(g, b, mask, val_mask)                                            \
-	{                                                                                    \
-		REG((g) + (b) * 0xc) = (REG((g) + (b) * 0xc) & ~(mask)) | (val_mask & mask); \
+#define gpio_set_value_mask(g, b, mask, val_mask)                                                \
+	{                                                                                        \
+		REG((g) + (b) * 0xc) = (REG((g) + (b) * 0xc) & ~(mask)) | ((val_mask) & (mask)); \
 	}
 
 #define gpio_set_function(g, b, pin, func) gpio_set_function_mask(g, b, BIT(pin), func)
 #define gpio_set_direction(g, b, pin, dir) gpio_set_direction_mask(g, b, BIT(pin), dir)
-#define gpio_set_value(g, b, pin, val)	   gpio_set_value_mask(g, b, BIT(pin), (!!(val)) << pin)
-#define gpio_get_value(g, b, pin)	   ((REG((g) + 0x50 + (b) * 0x4) >> pin) & 0x1)
+#define gpio_set_value(g, b, pin, val)	   gpio_set_value_mask(g, b, BIT(pin), (!!(val)) << (pin))
+#define gpio_get_value(g, b, pin)	   ((REG((g) + 0x50 + (b) * 0x4) >> (pin)) & 0x1)
 
 #endif
