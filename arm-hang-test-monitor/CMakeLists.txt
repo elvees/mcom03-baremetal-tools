@@ -33,6 +33,8 @@ if(${CONFIG_ARCH} STREQUAL "mips")
     build_and_install(ahtm-jtag "-DJTAG_BUILD" cram)
     build_and_install(ahtm-xip0-elvmc03smarc-r3.0.0 "-DBOARD_ELVMC03SMARC_R3" xip0)
     build_and_install(ahtm-jtag-elvmc03smarc-r3.0.0 "-DBOARD_ELVMC03SMARC_R3 -DJTAG_BUILD" cram)
+    build_and_install(ahtm-xip0-elvmc03smarc-r1.0 "-DBOARD_ELVMC03SMARC_R1" xip0)
+    build_and_install(ahtm-jtag-elvmc03smarc-r1.0 "-DBOARD_ELVMC03SMARC_R1 -DJTAG_BUILD" cram)
 endif()
 
 install(FILES ${PROJECT_SOURCE_DIR}/ahtm-run.mdb DESTINATION .)

@@ -68,6 +68,14 @@ static void hw_init(void)
 	REG(LSP1_UCG_CTRL4) = 0x2;
 	REG(LSP1_UCG_CTRL6) = 0x2;
 
+#ifdef BOARD_ELVMC03SMARC_R1
+	/* Enable LSPERIPH0 */
+	REG(LSPERIPH0_SUBS_PPOLICY) = PP_ON;
+	REG(TOP_CLKGATE) |= BIT(5);
+	while ((REG(LSPERIPH0_SUBS_PSTATUS) & 0x1f) != PP_ON)
+		continue;
+#endif
+
 	/* Put UART0 pads to hardware mode */
 	gpio_set_function_mask(GPIO1, GPIO_BANK_B, BIT(6) | BIT(7), GPIO_FUNC_PERIPH);
 
@@ -77,6 +85,11 @@ static void hw_init(void)
 	REG(LSP1_UCG_CTRL7) = 2;
 	REG(TIMER_LOAD_COUNT(7)) = 0;
 	REG(TIMER_CTRL(7)) = 5;
+
+#ifdef BOARD_ELVMC03SMARC_R1
+	UCG_SERVICE_UCG0->CTR[9] = 2; // clk_i2c4
+	UCG_SERVICE_UCG0->CTR[12] = 2; // clk_i2c4_ext
+#endif
 
 	wdt_start(0xf);
 }
@@ -244,6 +257,27 @@ int main(void)
 		gpio_set_value_mask(GPIO1, GPIO_BANK_D, 0xC, 0x4);
 	} else {
 		gpio_set_value_mask(GPIO1, GPIO_BANK_D, 0xC, 0x8);
+	}
+#endif
+
+#ifdef BOARD_ELVMC03SMARC_R1
+	gpio_set_function(GPIO0, GPIO_BANK_C, 3, GPIO_FUNC_GPIO);
+	gpio_set_function(GPIO0, GPIO_BANK_B, 1, GPIO_FUNC_GPIO);
+	gpio_set_function(GPIO0, GPIO_BANK_D, 7, GPIO_FUNC_GPIO);
+
+	gpio_set_direction(GPIO0, GPIO_BANK_C, 3, GPIO_DIR_OUT);
+	gpio_set_direction(GPIO0, GPIO_BANK_B, 1, GPIO_DIR_OUT);
+	gpio_set_direction(GPIO0, GPIO_BANK_D, 7, GPIO_DIR_OUT);
+
+	gpio_set_value(GPIO0, GPIO_BANK_D, 7, 0);
+
+	val = REG(TEST_FAIL_COUNTER_ADDR);
+	if (val == 0) {
+		gpio_set_value(GPIO0, GPIO_BANK_B, 1, 1);
+		gpio_set_value(GPIO0, GPIO_BANK_C, 3, 0);
+	} else {
+		gpio_set_value(GPIO0, GPIO_BANK_C, 3, 1);
+		gpio_set_value(GPIO0, GPIO_BANK_B, 1, 0);
 	}
 #endif
 	prev = REG(TEST_RESULT_ADDR);
