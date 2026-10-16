@@ -935,7 +935,7 @@ static void run_risc1(void)
 static void set_led(uint32_t led, uint32_t state)
 {
 #if defined(IS_PMI_BOARD)
-	gpio_set_value(GPIO0, GPIO_BANK_A, led, state)
+	gpio_set_value(GPIO0, GPIO_BANK_A, led, state);
 #elif defined(IS_SMARC3_BOARD)
 	uint32_t bank;
 	uint32_t g;
@@ -955,7 +955,7 @@ static void set_led(uint32_t led, uint32_t state)
 		return;
 	}
 
-	gpio_set_value(g, bank, led, !state)
+	gpio_set_value(g, bank, led, !state);
 #endif
 }
 
