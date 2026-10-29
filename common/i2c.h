@@ -17,66 +17,66 @@
 
 /* I2C registers */
 struct i2c {
-	volatile uint32_t CON;
-	volatile uint32_t TAR;
-	volatile uint32_t SAR;
-	volatile uint32_t HS_MADDR;
-	volatile uint32_t DATA_CMD;
-	volatile uint32_t SS_SCL_HCNT;
-	volatile uint32_t SS_SCL_LCNT;
-	volatile uint32_t FS_SCL_HCNT;
-	volatile uint32_t FS_SCL_LCNT;
-	volatile uint32_t HS_SCL_HCNT;
-	volatile uint32_t HS_SCL_LCNT;
-	volatile uint32_t INTR_STAT;
-	volatile uint32_t INTR_MASK;
-	volatile uint32_t RAW_INTR_STAT;
-	volatile uint32_t RX_TL;
-	volatile uint32_t TX_TL;
-	volatile uint32_t CLR_INTR;
-	volatile uint32_t CLR_RX_UNDER;
-	volatile uint32_t CLR_RX_OVER;
-	volatile uint32_t CLR_TX_OVER;
-	volatile uint32_t CLR_RD_REQ;
-	volatile uint32_t CLR_TX_ABRT;
-	volatile uint32_t CLR_RX_DONE;
-	volatile uint32_t CLR_ACTIVITY;
-	volatile uint32_t CLR_STOP_DET;
-	volatile uint32_t CLR_START_DET;
-	volatile uint32_t CLR_GEN_CALL;
-	volatile uint32_t ENABLE;
-	volatile uint32_t STATUS;
-	volatile uint32_t TXFLR;
-	volatile uint32_t RXFLR;
-	volatile uint32_t SDA_HOLD;
-	volatile uint32_t TX_ABRT_SOURCE;
-	volatile uint32_t SLV_DATA_NACK_ONLY;
-	volatile uint32_t DMA_CR;
-	volatile uint32_t DMA_TDLR;
-	volatile uint32_t DMA_RDLR;
-	volatile uint32_t SDA_SETUP;
-	volatile uint32_t ACK_GENERAL_CALL;
-	volatile uint32_t ENABLE_STATUS;
-	volatile uint32_t FS_SPKLEN;
-	volatile uint32_t HS_SPKLEN;
-	volatile uint32_t CLR_RESTART_DET;
-	volatile uint32_t SCL_STUCK_AT_LOW_TIMEOUT;
-	volatile uint32_t SDA_STUCK_AT_LOW_TIMEOUT;
-	volatile uint32_t CLR_SCL_STUCK_DET;
-	volatile uint32_t DEVICE_ID;
-	volatile uint32_t SMBUS_CLK_LOW_SEXT;
-	volatile uint32_t SMBUS_CLK_LOW_MEXT;
-	volatile uint32_t SMBUS_THIGH_MAX_IDLE_COUNT;
-	volatile uint32_t SMBUS_INTR_STAT;
-	volatile uint32_t SMBUS_INTR_MASK;
-	volatile uint32_t SMBUS_RAW_INTR_STAT;
-	volatile uint32_t CLR_SMBUS_INTR;
-	volatile uint32_t OPTIONAL_SAR;
-	volatile uint32_t SMBUS_UDID_LSB;
-	volatile uint32_t RESERVED;
-	volatile uint32_t COMP_PARAM_1;
-	volatile uint32_t COMP_VERSION;
-	volatile uint32_t COMP_TYPE;
+	volatile uint32_t CON; /* 0x00 */
+	volatile uint32_t TAR; /* 0x04 */
+	volatile uint32_t SAR; /* 0x08 */
+	volatile uint32_t HS_MADDR; /* 0x0c */
+	volatile uint32_t DATA_CMD; /* 0x10 */
+	volatile uint32_t SS_SCL_HCNT; /* 0x14 */
+	volatile uint32_t SS_SCL_LCNT; /* 0x18 */
+	volatile uint32_t FS_SCL_HCNT; /* 0x1c */
+	volatile uint32_t FS_SCL_LCNT; /* 0x20 */
+	volatile uint32_t HS_SCL_HCNT; /* 0x24 */
+	volatile uint32_t HS_SCL_LCNT; /* 0x28 */
+	volatile uint32_t INTR_STAT; /* 0x2c */
+	volatile uint32_t INTR_MASK; /* 0x30 */
+	volatile uint32_t RAW_INTR_STAT; /* 0x34 */
+	volatile uint32_t RX_TL; /* 0x38 */
+	volatile uint32_t TX_TL; /* 0x3c */
+	volatile uint32_t CLR_INTR; /* 0x40 */
+	volatile uint32_t CLR_RX_UNDER; /* 0x44 */
+	volatile uint32_t CLR_RX_OVER; /* 0x48 */
+	volatile uint32_t CLR_TX_OVER; /* 0x4c */
+	volatile uint32_t CLR_RD_REQ; /* 0x50 */
+	volatile uint32_t CLR_TX_ABRT; /* 0x54 */
+	volatile uint32_t CLR_RX_DONE; /* 0x58 */
+	volatile uint32_t CLR_ACTIVITY; /* 0x5c */
+	volatile uint32_t CLR_STOP_DET; /* 0x60 */
+	volatile uint32_t CLR_START_DET; /* 0x64 */
+	volatile uint32_t CLR_GEN_CALL; /* 0x68 */
+	volatile uint32_t ENABLE; /* 0x6c */
+	volatile uint32_t STATUS; /* 0x70 */
+	volatile uint32_t TXFLR; /* 0x74 */
+	volatile uint32_t RXFLR; /* 0x78 */
+	volatile uint32_t SDA_HOLD; /* 0x7c */
+	volatile uint32_t TX_ABRT_SOURCE; /* 0x80 */
+	volatile uint32_t SLV_DATA_NACK_ONLY; /* 0x84 */
+	volatile uint32_t DMA_CR; /* 0x88 */
+	volatile uint32_t DMA_TDLR; /* 0x8c */
+	volatile uint32_t DMA_RDLR; /* 0x90 */
+	volatile uint32_t SDA_SETUP; /* 0x94 */
+	volatile uint32_t ACK_GENERAL_CALL; /* 0x98 */
+	volatile uint32_t ENABLE_STATUS; /* 0x9c */
+	volatile uint32_t FS_SPKLEN; /* 0xa0 */
+	volatile uint32_t HS_SPKLEN; /* 0xa4 */
+	volatile uint32_t CLR_RESTART_DET; /* 0xa8 */
+	volatile uint32_t SCL_STUCK_AT_LOW_TIMEOUT; /* 0xac */
+	volatile uint32_t SDA_STUCK_AT_LOW_TIMEOUT; /* 0xb0 */
+	volatile uint32_t CLR_SCL_STUCK_DET; /* 0xb4 */
+	volatile uint32_t DEVICE_ID; /* 0xb8 */
+	volatile uint32_t SMBUS_CLK_LOW_SEXT; /* 0xbc */
+	volatile uint32_t SMBUS_CLK_LOW_MEXT; /* 0xc0 */
+	volatile uint32_t SMBUS_THIGH_MAX_IDLE_COUNT; /* 0xc4 */
+	volatile uint32_t SMBUS_INTR_STAT; /* 0xc8 */
+	volatile uint32_t SMBUS_INTR_MASK; /* 0xcc */
+	volatile uint32_t SMBUS_RAW_INTR_STAT; /* 0xd0 */
+	volatile uint32_t CLR_SMBUS_INTR; /* 0xd4 */
+	volatile uint32_t OPTIONAL_SAR; /* 0xd8 */
+	volatile uint32_t SMBUS_UDID_LSB; /* 0xdc */
+	volatile uint32_t RESERVED[(0xf4 - 0xe0) / sizeof(uint32_t)]; /* 0xe0 --- 0xf0 */
+	volatile uint32_t COMP_PARAM_1; /* 0xf4 */
+	volatile uint32_t COMP_VERSION; /* 0xf8 */
+	volatile uint32_t COMP_TYPE; /* 0xfc */
 };
 
 /* Register bits */
