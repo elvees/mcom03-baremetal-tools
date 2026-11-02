@@ -164,18 +164,18 @@ static int clocks_cfg(void)
 
 static void read_pll_status(uint32_t ticks_count)
 {
-	unsigned long tick_start = _get_tick_counter();
+	unsigned long tick_start = get_tick_counter();
 	unsigned long tick = tick_start + ticks_count;
 
 	if (tick < tick_start) {
-		while (_get_tick_counter() > tick_start) {
+		while (get_tick_counter() > tick_start) {
 			cpu_pll_status |= REG(CPU_URB_PLL_DIAG);
 			ddr_pll_status |= REG(DDR_URB_PLL1_DIAG);
 			top_pll_status |= REG(IC_URB_PLL_DIAG);
 		}
 	}
 
-	while (_get_tick_counter() < tick) {
+	while (get_tick_counter() < tick) {
 		cpu_pll_status |= REG(CPU_URB_PLL_DIAG);
 		ddr_pll_status |= REG(DDR_URB_PLL1_DIAG);
 		top_pll_status |= REG(IC_URB_PLL_DIAG);
@@ -184,7 +184,7 @@ static void read_pll_status(uint32_t ticks_count)
 
 void mdelay_and_read_pll_status(uint32_t ms)
 {
-	uint32_t ticks_per_s = _get_tick_freq();
+	uint32_t ticks_per_s = get_tick_freq();
 	uint32_t ticks_per_ms = ticks_per_s / 1000;
 
 	while (ms > 1000) {

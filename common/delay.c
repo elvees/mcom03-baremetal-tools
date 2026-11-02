@@ -5,6 +5,33 @@
 #include <delay.h>
 #include <regs.h>
 
+#ifdef MIPS32
+static unsigned long tick_freq = XTI_FREQUENCY;
+
+void set_tick_freq(unsigned long freq)
+{
+	tick_freq = freq;
+}
+
+static inline unsigned long _get_tick_freq(void)
+{
+	return tick_freq;
+}
+#else
+void set_tick_freq(unsigned long freq)
+{
+}
+
+static inline unsigned long _get_tick_freq(void)
+{
+	unsigned long cntfrq;
+
+	asm volatile("mrs %0, cntfrq_el0" : "=r"(cntfrq));
+
+	return cntfrq;
+}
+#endif
+
 uint32_t get_ticks_per_us(void)
 {
 	return _get_tick_freq() / 1000000;
@@ -15,26 +42,21 @@ unsigned long get_tick_freq(void)
 	return _get_tick_freq();
 }
 
-unsigned long get_tick_counter(void)
-{
-	return _get_tick_counter();
-}
-
 unsigned long ticks_since(unsigned long tick)
 {
-	return _get_tick_counter() - tick;
+	return get_tick_counter() - tick;
 }
 
 static void delay_ticks(uint32_t ticks_count)
 {
-	unsigned long tick_start = _get_tick_counter();
+	unsigned long tick_start = get_tick_counter();
 	unsigned long tick = tick_start + ticks_count;
 
 	if (tick < tick_start)
-		while (_get_tick_counter() > tick_start)
+		while (get_tick_counter() > tick_start)
 			continue;
 
-	while (_get_tick_counter() < tick)
+	while (get_tick_counter() < tick)
 		continue;
 }
 
