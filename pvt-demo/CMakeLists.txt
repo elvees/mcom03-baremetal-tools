@@ -21,7 +21,7 @@ foreach(REGION IN ITEMS ${REGIONS})
     set(FNAME pvt-${CONFIG_ARCH}-${REGION})
 
     add_executable(${FNAME}.elf ../common/start-${CONFIG_ARCH}.S main.c ../common/console.c
-        ../common/delay.c ../common/uart.c ../common/pvt.c ../common/clk.c)
+        ../common/delay.c ../common/uart.c ../common/pvt.c ../common/clk.c ../common/mfbsp.c)
     set_target_properties(${FNAME}.elf
         PROPERTIES LINK_FLAGS "-Wl,-Map=${FNAME}.map -T ${FNAME}.ld")
     add_custom_command(
