@@ -102,6 +102,9 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define SERVICE_BASE	     0x1f000000
 #define SERVICE_URB	     SERVICE_BASE
 #define SERVICE_URB_PLL	     (SERVICE_URB + 0x1000)
+#define SERVICE_BOOT_MODE    (SERVICE_URB + 0x2000)
+#define SERVICE_XIP_EN_REQ   (SERVICE_URB + 0x2004)
+#define SERVICE_XIP_EN_OUT   (SERVICE_URB + 0x2008)
 #define SERVICE_URB_OTP_MODE (SERVICE_URB + 0x3008)
 #define SERVICE_URB_OTP_FLAG (SERVICE_URB + 0x300C)
 #define SERVICE_URB_OTP_ECC  (SERVICE_URB + 0x3018)
@@ -110,7 +113,12 @@ static inline uint32_t c0_get(uint32_t reg, uint32_t sel)
 #define I2C4_BASE	     (SERVICE_BASE + 0x90000)
 #define MFBSP0_BASE	     (SERVICE_BASE + 0xa0000)
 #define MFBSP1_BASE	     (SERVICE_BASE + 0xb0000)
+#define ROM_BASE	     (SERVICE_BASE + 0xc00000)
 #define SERVICE_RISC0_VMMU   (SERVICE_BASE + 0xd04000)
+
+#define ROM_REVISION	     (ROM_BASE + 0x530)
+#define ROM_REVISION_MCOM03  0x1
+#define ROM_REVISION_MCOM03R 0x2
 
 #define LSP0_BASE    0x01600000
 #define PDMA0_BASE   LSP0_BASE

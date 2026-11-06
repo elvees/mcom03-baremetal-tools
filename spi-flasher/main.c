@@ -10,6 +10,7 @@
 #include <delay.h>
 #include <gpio.h>
 #include <i2c.h>
+#include <mfbsp.h>
 #include <qspi.h>
 #include <regs.h>
 #include <uart.h>
@@ -266,6 +267,27 @@ void run_bootrom(void)
 	REG(XIP_EN_REQ) = 1; // QSPI0 to XIP mode
 	REG(HSP_URB_XIP_EN_REQ) = 1; // QSPI1 from XIP mode
 	bootrom(); // BootROM will reconfigure all registers and never return to SPI Flasher
+}
+
+static void lsp1_pads_voltage_switch(void)
+{
+#ifdef MIPS32
+	struct mfbsp *mfbsp;
+	uint32_t revision;
+
+	// BootROM area is unavailable in XIP boot mode
+	if (REG(SERVICE_XIP_EN_OUT))
+		return;
+
+	revision = REG(ROM_REVISION);
+	if (revision == ROM_REVISION_MCOM03R) {
+		// Only for Mcom-03R
+		mfbsp = MFBSP0;
+		mfbsp_gpio_set_pin_dir(mfbsp, MFBSP_LDAT4, GPIO_DIR_IN);
+		if (mfbsp_gpio_get_pin_value(mfbsp, MFBSP_LDAT4))
+			REG(LSP1_URB_GPIO1_V18) = 0x1; // sets LSP1 pads voltage to 1.8V
+	}
+#endif
 }
 
 int qspi_prepare(int id, int v18)
@@ -859,6 +881,7 @@ int main(void)
 		ucg->CTR_REG[1] = 0x2 | (1 << 10); // CLK_CORE div=1 (216 MHz)
 		ucg->CTR_REG[2] = 0x2 | (1 << 10); // CLK_QSPI0 div=1 (216 MHz)
 		ucg->CTR_REG[4] = 0x2 | (1 << 10); // CLK_RISC0 div=1 (216 MHz)
+		ucg->CTR_REG[5] = 0x2 | (8 << 10); // CLK_MFBSP div=8 (27 MHz)
 		ucg->CTR_REG[13] = 0x2 | (16 << 10); // CLK_QSPI0_EXT div=16 (13.5 MHz)
 	}
 
@@ -905,6 +928,9 @@ int main(void)
 	ucg->CTR_REG[3] = 0x2 | (1 << 10); // I2C3_CLK div=1 (27 MHz)
 	ucg->CTR_REG[6] = 0x2 | (1 << 10); // UART_CLK div=1 (27 MHz)
 
+	// Setup LSP1 pads voltage
+	lsp1_pads_voltage_switch();
+
 	// Setup UART0 pads
 	REG(LSP1_URB_PAD_CTR(PORTB, 6)) = PAD_CTL_CTL(0x7) | PAD_CTL_SL(0x3);
 	REG(LSP1_URB_PAD_CTR(PORTB, 7)) = PAD_CTL_E | PAD_CTL_CTL(0x7) | PAD_CTL_SL(0x3) |
@@ -915,7 +941,6 @@ int main(void)
 	uart_flush(UART0);
 	uart_init(UART0, XTI_FREQUENCY, 115200);
 	qspi_prepare(0, 1);
-	ucg = (ucg_regs_t *)(TO_VIRT(SERVICE_UCG));
 	uart_printf(UART0, "%s\n#", APP_NAME);
 
 	while (!need_exit) {
